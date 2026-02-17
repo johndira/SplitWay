@@ -127,8 +127,8 @@ MIT — see [LICENSE](LICENSE)
 ## 👤 Author
 
 **Your Name**
-- GitHub: [@your-username](https://github.com/your-username)
-- LinkedIn: [your-profile](https://linkedin.com/in/your-profile)
+- GitHub: [@your-username](https://github.com/ohndira)
+- LinkedIn: [your-profile](www.linkedin.com/in/johndiradoorian)
 
 ---
 
