@@ -610,6 +610,40 @@
             flex-shrink: 0;
         }
 
+        /* Split evenly toggle */
+        .split-evenly-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+            user-select: none;
+            flex-shrink: 0;
+        }
+        .split-evenly-toggle input[type="checkbox"] {
+            width: 1.05rem;
+            height: 1.05rem;
+            accent-color: var(--primary);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .split-evenly-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .split-evenly-toggle input:checked ~ .split-evenly-label {
+            color: var(--primary);
+        }
+
+        /* Wrapper for assigned badge + hidden change dropdown */
+        .assigned-cell {
+            position: relative;
+        }
+        .change-select {
+            min-width: 130px;
+        }
+
         /* Tip adjuster - larger unified box */
         /* Tip adjuster (compact + collapsible) */
         .tip-adjuster-compact {
@@ -1358,7 +1392,13 @@
             <!-- Step 4: Assign Items -->
             <div class="step" id="step4">
                 <h2 style="font-family: 'Epilogue', sans-serif; font-size: 1.75rem; margin-bottom: 0.5rem;">Assign items</h2>
-                <p style="color: var(--text-secondary); margin-bottom: 2rem;">Who ordered what?</p>
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:2rem;">
+                    <p style="color: var(--text-secondary); margin:0;">Who ordered what?</p>
+                    <label class="split-evenly-toggle">
+                        <input type="checkbox" id="splitEvenlyCheck" onchange="toggleSplitEvenly(this.checked)">
+                        <span class="split-evenly-label">Split evenly</span>
+                    </label>
+                </div>
 
                 <div id="itemsList"></div>
 
@@ -2227,17 +2267,31 @@ Important:
         function buildSelectorHtml(item, index) {
             const assigned = getAssignedLabel(item);
 
-            if (assigned) {
-                return `<div class="assigned-badge assigned-done" onclick="resetItem(${index})">
-                            <span class="assigned-check">&#10003;</span>
-                            <span class="check-label">Assigned</span>
-                            <span class="reset-label">Unassign</span>
-                        </div>`;
-            }
-
             const options = people.map(p =>
                 `<option value="person__${p.id}">${p.name}</option>`
             ).join('');
+
+            if (assigned) {
+                // Show badge by default; clicking it swaps to the open dropdown
+                return `
+                    <div class="assigned-cell" id="assignedCell_${index}">
+                        <div class="assigned-badge assigned-done" onclick="openChangeDropdown(${index})">
+                            <span class="assigned-check">&#10003;</span>
+                            <span class="check-label">Assigned</span>
+                            <span class="reset-label">Change</span>
+                        </div>
+                        <select class="person-select change-select" id="changeSelect_${index}"
+                                style="display:none;"
+                                onchange="assignItem(${index}, this.value)"
+                                onblur="closeChangeDropdown(${index})">
+                            <option value="">Assign to...</option>
+                            ${options}
+                            <option value="all">Split – All</option>
+                            <option value="custom">Split – Custom</option>
+                            <option value="__unassign__">— Unassign</option>
+                        </select>
+                    </div>`;
+            }
 
             return `<select class="person-select" onchange="assignItem(${index}, this.value)">
                         <option value="">Assign to...</option>
@@ -2245,6 +2299,28 @@ Important:
                         <option value="all">Split – All</option>
                         <option value="custom">Split – Custom</option>
                     </select>`;
+        }
+
+        function openChangeDropdown(index) {
+            const cell = document.getElementById(`assignedCell_${index}`);
+            if (!cell) return;
+            cell.querySelector('.assigned-badge').style.display = 'none';
+            const sel = document.getElementById(`changeSelect_${index}`);
+            sel.style.display = 'block';
+            sel.focus();
+        }
+
+        function closeChangeDropdown(index) {
+            const cell = document.getElementById(`assignedCell_${index}`);
+            if (!cell) return;
+            // Small delay so onchange fires before blur hides the select
+            setTimeout(() => {
+                const sel = document.getElementById(`changeSelect_${index}`);
+                if (!sel) return;
+                sel.style.display = 'none';
+                const badge = cell.querySelector('.assigned-badge');
+                if (badge) badge.style.display = '';
+            }, 150);
         }
 
         function buildAssigneesHtml(item) {
@@ -2255,6 +2331,17 @@ Important:
             if (names.length === 0) return '';
             const label = names.length === people.length ? 'Everyone' : names.join(', ');
             return `<div class="item-assignees">&#10003; ${label}</div>`;
+        }
+
+        function toggleSplitEvenly(checked) {
+            const foodItems = receiptItems.filter(i => !i.isFee);
+            foodItems.forEach(item => {
+                item.assignedTo = checked ? people.map(p => p.id) : [];
+            });
+            renderItems();
+            // Keep checkbox state after re-render
+            const cb = document.getElementById('splitEvenlyCheck');
+            if (cb) cb.checked = checked;
         }
 
                 // Full render — only called once after receipt is parsed
@@ -2340,6 +2427,12 @@ Important:
                 function assignItem(itemIndex, value) {
             if (!value || value === '') return;
 
+            if (value === '__unassign__') {
+                receiptItems[itemIndex].assignedTo = [];
+                updateRow(itemIndex);
+                return;
+            }
+
             if (value === 'custom') {
                 showCustomSplitModal(itemIndex);
                 return;
@@ -2348,8 +2441,7 @@ Important:
             if (value === 'all') {
                 receiptItems[itemIndex].assignedTo = people.map(p => p.id);
             } else if (value.startsWith('person__')) {
-                // Extract the original ID string and find matching person
-                const rawId = value.slice(8); // remove "person__"
+                const rawId = value.slice(8);
                 const person = people.find(p => String(p.id) === rawId);
                 if (!person) return;
                 receiptItems[itemIndex].assignedTo = [person.id];
