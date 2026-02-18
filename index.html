@@ -787,6 +787,78 @@
             background: rgba(10, 132, 255, 0.05);
         }
 
+        /* Remove item button on each food item row */
+        .remove-item-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            cursor: pointer;
+            padding: 0.25rem 0.4rem;
+            border-radius: 6px;
+            line-height: 1;
+            opacity: 0.5;
+            transition: opacity 0.15s, color 0.15s;
+            flex-shrink: 0;
+        }
+        .remove-item-btn:hover {
+            opacity: 1;
+            color: #ff3b30;
+        }
+
+        /* Inline add item form */
+        .inline-add-item {
+            background: var(--surface);
+            border: 1.5px solid var(--primary);
+            border-radius: 12px;
+            padding: 0.85rem 1rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+        .inline-add-item input[type="text"],
+        .inline-add-item input[type="number"] {
+            width: 100%;
+            padding: 0.6rem 0.85rem;
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            background: var(--background);
+            color: var(--text-primary);
+            box-sizing: border-box;
+            -webkit-appearance: none;
+        }
+        .inline-add-item input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        .inline-add-btns {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .inline-add-confirm {
+            flex: 1;
+            padding: 0.6rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+        .inline-add-cancel {
+            padding: 0.6rem 1rem;
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+
                 /* Summary */
         .summary-card {
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
@@ -1180,7 +1252,7 @@
                         <div class="upload-zone-text">Tap to upload receipt photo</div>
                         <div class="upload-zone-sub">JPG, PNG, HEIC · drag &amp; drop also works</div>
                     </div>
-                    <input type="file" id="receiptFileInput" accept="image/*" capture="environment" style="display:none;" onchange="handleReceiptFile(event)">
+                    <input type="file" id="receiptFileInput" accept="image/*" style="display:none;" onchange="handleReceiptFile(event)">
 
                     <!-- Image preview (shown after image selected) -->
                     <div class="img-preview-wrap" id="imgPreviewWrap">
@@ -1581,7 +1653,7 @@
                         <div class="person-name">${person.name}</div>
                         <div class="person-phone">${person.phone}</div>
                     </div>
-                    <div class="checkmark"></div>
+                    ${payerId === person.id ? '<div class="checkmark"></div>' : ''}
                 </div>
             `).join('');
 
@@ -1976,35 +2048,48 @@ Important:
         }
 
         // ── Add item manually ───────────────────────────────────────────────
-        function showAddItemModal() {
-            const itemName = prompt('Item name:', '');
-            if (!itemName || itemName.trim() === '') return;
-            
-            const priceStr = prompt('Item price ($):', '0.00');
-            const price = parseFloat(priceStr);
-            if (isNaN(price) || price < 0) {
-                alert('Invalid price');
-                return;
-            }
-            
-            // Insert before the first fee
+        function showInlineAddItem() {
+            document.getElementById('inlineAddItem').style.display = 'block';
+            document.getElementById('addItemBtn').style.display = 'none';
+            document.getElementById('inlineItemName').focus();
+        }
+
+        function cancelInlineItem() {
+            document.getElementById('inlineItemName').value = '';
+            document.getElementById('inlineItemPrice').value = '';
+            document.getElementById('inlineAddItem').style.display = 'none';
+            document.getElementById('addItemBtn').style.display = 'block';
+        }
+
+        function confirmInlineItem() {
+            const nameEl  = document.getElementById('inlineItemName');
+            const priceEl = document.getElementById('inlineItemPrice');
+            const name    = nameEl.value.trim();
+            const price   = parseFloat(priceEl.value);
+
+            if (!name) { nameEl.focus(); return; }
+            if (isNaN(price) || price < 0) { priceEl.focus(); return; }
+
             const firstFeeIdx = receiptItems.findIndex(i => i.isFee);
-            const newItem = {
-                name: itemName.trim(),
-                price: parseFloat(price.toFixed(2)),
-                assignedTo: []
-            };
-            
+            const newItem = { name, price: parseFloat(price.toFixed(2)), assignedTo: [] };
+
             if (firstFeeIdx !== -1) {
                 receiptItems.splice(firstFeeIdx, 0, newItem);
             } else {
                 receiptItems.push(newItem);
             }
-            
-            // Update subtotalBase
+
             const foodItems = receiptItems.filter(i => !i.isFee);
             subtotalBase = foodItems.reduce((sum, i) => sum + i.price, 0);
-            
+
+            renderItems();
+            refreshTipDisplay();
+        }
+
+        function removeItem(index) {
+            receiptItems.splice(index, 1);
+            const foodItems = receiptItems.filter(i => !i.isFee);
+            subtotalBase = foodItems.reduce((sum, i) => sum + i.price, 0);
             renderItems();
             refreshTipDisplay();
         }
@@ -2093,13 +2178,22 @@ Important:
                         </div>
                         <div class="item-price">$${item.price.toFixed(2)}</div>
                         <div class="selector-cell">${buildSelectorHtml(item, actualIndex)}</div>
+                        <button class="remove-item-btn" onclick="removeItem(${actualIndex})" title="Remove item">✕</button>
                     </div>
                 `;
             });
-            
-            // Add "+ Add Item" button
+
+            // Inline add item form
             html += `
-                <button class="add-item-btn" onclick="showAddItemModal()">
+                <div class="inline-add-item" id="inlineAddItem" style="display:none;">
+                    <input type="text" id="inlineItemName" placeholder="Item name" autocomplete="off" autocorrect="off" spellcheck="false">
+                    <input type="number" id="inlineItemPrice" placeholder="Price" min="0" step="0.01">
+                    <div class="inline-add-btns">
+                        <button class="inline-add-confirm" onclick="confirmInlineItem()">Add</button>
+                        <button class="inline-add-cancel" onclick="cancelInlineItem()">Cancel</button>
+                    </div>
+                </div>
+                <button class="add-item-btn" id="addItemBtn" onclick="showInlineAddItem()">
                     + Add Item
                 </button>
             `;
