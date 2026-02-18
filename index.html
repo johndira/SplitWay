@@ -587,9 +587,9 @@
         }
 
         .assigned-done:hover {
-            background: rgba(255, 69, 58, 0.08);
-            border-color: rgba(255, 69, 58, 0.5);
-            color: var(--danger);
+            background: rgba(120, 120, 128, 0.12);
+            border-color: rgba(120, 120, 128, 0.4);
+            color: #666;
         }
 
         .check-label { display: inline; }
@@ -1209,7 +1209,7 @@
                     </div>
                     <div class="form-group">
                         <label>Phone Number</label>
-                        <input type="tel" id="personPhone" placeholder="(555) 123-4567" autocomplete="off">
+                        <input type="tel" id="personPhone" placeholder="(555) 123-4567" autocomplete="off" oninput="formatPhoneInput(this)">
                     </div>
                     <button class="btn-primary" onclick="addPerson()">Add Person</button>
                     <button class="btn-secondary" onclick="hideAddPersonForm()">Cancel</button>
@@ -1592,6 +1592,22 @@
             document.getElementById('addPersonForm').style.display = 'none';
             document.getElementById('personName').value = '';
             document.getElementById('personPhone').value = '';
+        }
+
+        function formatPhoneInput(input) {
+            // Strip everything except digits
+            let digits = input.value.replace(/\D/g, '').slice(0, 10);
+            let formatted = '';
+            if (digits.length === 0) {
+                formatted = '';
+            } else if (digits.length <= 3) {
+                formatted = '(' + digits;
+            } else if (digits.length <= 6) {
+                formatted = '(' + digits.slice(0, 3) + ') ' + digits.slice(3);
+            } else {
+                formatted = '(' + digits.slice(0, 3) + ') ' + digits.slice(3, 6) + '-' + digits.slice(6);
+            }
+            input.value = formatted;
         }
 
         function addPerson() {
@@ -2130,7 +2146,7 @@ Important:
                 return `<div class="assigned-badge assigned-done" onclick="resetItem(${index})">
                             <span class="assigned-check">&#10003;</span>
                             <span class="check-label">Assigned</span>
-                            <span class="reset-label">&#10005; Reset</span>
+                            <span class="reset-label">Unassign</span>
                         </div>`;
             }
 
