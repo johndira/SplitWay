@@ -1075,6 +1075,26 @@
             color: var(--text-secondary);
         }
 
+        /* Venmo button */
+        .venmo-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            margin-top: 0.85rem;
+            padding: 0.65rem 1rem;
+            background: #008CFF;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 0.92rem;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .venmo-btn:hover { opacity: 0.88; }
+
         /* Buttons */
         .btn-primary {
             width: 100%;
@@ -2746,7 +2766,14 @@ Important:
                                 $${payerOwnShare.toFixed(2)}
                             </div>
                         </div>
-                        <div class="person-summary-breakdown" id="breakdown_${person.id}"></div>
+                        <div class="person-summary-breakdown" id="breakdown_${person.id}">
+                            <div id="breakdownItems_${person.id}"></div>
+                            ${!isPayer ? `
+                            <button class="venmo-btn" onclick="event.stopPropagation(); requestVenmo(${person.id}, ${payerOwnShare.toFixed(2)})">
+                                <svg viewBox="0 0 24 24" fill="white" width="16" height="16"><path d="M19.1 1.6c.5.8.7 1.7.7 2.8 0 3.5-3 8-5.4 11.2H9.2L7 2.4l4.7-.5 1.1 9.1c1-1.7 2.3-4.4 2.3-6.2 0-1-.2-1.7-.5-2.3z"/></svg>
+                                Request $${payerOwnShare.toFixed(2)} via Venmo
+                            </button>` : ''}
+                        </div>
                     </div>
                 `;
             }).join('');
@@ -2783,8 +2810,9 @@ Important:
 
             const isOpen = breakdown.classList.contains('open');
 
-            if (!isOpen && breakdown.innerHTML === '') {
-                // Build breakdown HTML on first open
+            // Inject items into the dedicated items container on first open
+            const itemsContainer = document.getElementById(`breakdownItems_${personId}`);
+            if (!isOpen && itemsContainer && itemsContainer.innerHTML === '') {
                 const { rows, feeShare } = getItemsForPerson(personId);
                 let html = '';
                 if (rows.length === 0) {
@@ -2806,11 +2834,20 @@ Important:
                         <span>Taxes, Fees &amp; Tip <span style="opacity:0.65;">(split evenly)</span></span>
                         <span>$${feeShare.toFixed(2)}</span>
                     </div>`;
-                breakdown.innerHTML = html;
+                itemsContainer.innerHTML = html;
             }
 
             breakdown.classList.toggle('open', !isOpen);
             card.classList.toggle('expanded', !isOpen);
+        }
+
+        function requestVenmo(personId, amount) {
+            const payer      = people.find(p => p.id === payerId);
+            const restaurant = (document.getElementById('restaurantName').value || '').trim();
+            const note       = restaurant ? `Dinner at ${restaurant} via SplitWay` : `Dinner via SplitWay`;
+            const phone      = people.find(p => p.id === personId)?.phone.replace(/\D/g, '') || '';
+            const venmoUrl   = `venmo://paycharge?txn=charge&recipients=${phone}&amount=${amount.toFixed(2)}&note=${encodeURIComponent(note)}`;
+            window.location.href = venmoUrl;
         }
 
         // Final actions
