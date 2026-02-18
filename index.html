@@ -499,7 +499,7 @@
 
         .item-row {
             display: grid;
-            grid-template-columns: 1fr auto 120px;
+            grid-template-columns: 1fr auto auto;
             gap: 0.75rem;
             align-items: start;
             padding: 1rem;
@@ -550,7 +550,8 @@
 
         .selector-cell {
             display: flex;
-            align-items: flex-start;
+            align-items: center;
+            gap: 0.35rem;
         }
 
         .person-select {
@@ -2272,24 +2273,11 @@ Important:
             ).join('');
 
             if (assigned) {
-                // Show badge by default; clicking it swaps to the open dropdown
                 return `
-                    <div class="assigned-cell" id="assignedCell_${index}">
-                        <div class="assigned-badge assigned-done" onclick="openChangeDropdown(${index})">
-                            <span class="assigned-check">&#10003;</span>
-                            <span class="check-label">Assigned</span>
-                            <span class="reset-label">Change</span>
-                        </div>
-                        <select class="person-select change-select" id="changeSelect_${index}"
-                                style="display:none;"
-                                onchange="assignItem(${index}, this.value)"
-                                onblur="closeChangeDropdown(${index})">
-                            <option value="">Assign to...</option>
-                            ${options}
-                            <option value="all">Split – All</option>
-                            <option value="custom">Split – Custom</option>
-                            <option value="__unassign__">— Unassign</option>
-                        </select>
+                    <div class="assigned-badge assigned-done" onclick="unassignItem(${index})">
+                        <span class="assigned-check">&#10003;</span>
+                        <span class="check-label">Assigned</span>
+                        <span class="reset-label">Unassign</span>
                     </div>`;
             }
 
@@ -2301,51 +2289,9 @@ Important:
                     </select>`;
         }
 
-        // Store previous assignedTo when Change is clicked, so we can restore on cancel
-        let _changeSnapshot = null;
-
-        function openChangeDropdown(index) {
-            // Snapshot current assignment so we can restore if user cancels
-            _changeSnapshot = { index, prev: [...receiptItems[index].assignedTo] };
-
-            // Clear assignment — removes green highlight immediately
+        function unassignItem(index) {
             receiptItems[index].assignedTo = [];
-
-            // Remove green class from the row
-            const row = document.querySelector(`.item-row[data-row="${index}"]`);
-            if (row) row.classList.remove('item-row-assigned');
-
-            // Hide badge, show & trigger the select
-            const cell = document.getElementById(`assignedCell_${index}`);
-            if (!cell) return;
-            cell.querySelector('.assigned-badge').style.display = 'none';
-            const sel = document.getElementById(`changeSelect_${index}`);
-            sel.style.display = 'block';
-            sel.value = '';
-
-            // Use a tiny timeout so the element is visible before we simulate a click
-            setTimeout(() => {
-                sel.focus();
-                // Trigger native picker on mobile via a real click event
-                sel.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-            }, 30);
-        }
-
-        function closeChangeDropdown(index) {
-            // Small delay so onchange fires before blur hides the select
-            setTimeout(() => {
-                const sel = document.getElementById(`changeSelect_${index}`);
-                if (!sel) return;
-
-                // If nothing was chosen (still unassigned) and we have a snapshot, restore
-                if (receiptItems[index].assignedTo.length === 0 && _changeSnapshot && _changeSnapshot.index === index) {
-                    receiptItems[index].assignedTo = _changeSnapshot.prev;
-                    _changeSnapshot = null;
-                    updateRow(index);
-                } else {
-                    _changeSnapshot = null;
-                }
-            }, 150);
+            updateRow(index);
         }
 
         function buildAssigneesHtml(item) {
@@ -2390,8 +2336,10 @@ Important:
                             <div class="assignees-cell">${buildAssigneesHtml(item)}</div>
                         </div>
                         <div class="item-price">$${item.price.toFixed(2)}</div>
-                        <div class="selector-cell">${buildSelectorHtml(item, actualIndex)}</div>
-                        <button class="remove-item-btn" onclick="removeItem(${actualIndex})" title="Remove item">✕</button>
+                        <div class="selector-cell">
+                            ${buildSelectorHtml(item, actualIndex)}
+                            <button class="remove-item-btn" onclick="removeItem(${actualIndex})" title="Remove item">✕</button>
+                        </div>
                     </div>
                 `;
             });
@@ -2451,12 +2399,6 @@ Important:
 
                 function assignItem(itemIndex, value) {
             if (!value || value === '') return;
-
-            if (value === '__unassign__') {
-                receiptItems[itemIndex].assignedTo = [];
-                updateRow(itemIndex);
-                return;
-            }
 
             if (value === 'custom') {
                 showCustomSplitModal(itemIndex);
