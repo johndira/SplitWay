@@ -1660,6 +1660,13 @@
             input.value = formatted;
         }
 
+        // Format any stored phone string for display — handles old unformatted numbers
+        function displayPhone(phone) {
+            const digits = (phone || '').replace(/\D/g, '').slice(0, 10);
+            if (digits.length < 10) return phone; // not a standard 10-digit number, show as-is
+            return '(' + digits.slice(0, 3) + ') ' + digits.slice(3, 6) + '-' + digits.slice(6);
+        }
+
         function addPerson() {
             const name  = document.getElementById('personName').value.trim();
             const phone = document.getElementById('personPhone').value.trim();
@@ -1698,7 +1705,7 @@
                     <div class="person-card">
                         <div class="person-info">
                             <div class="person-name">${person.name}</div>
-                            <div class="person-phone">${person.phone}</div>
+                            <div class="person-phone">${displayPhone(person.phone)}</div>
                         </div>
                         <button class="remove-btn" onclick="removePerson(${person.id})">×</button>
                     </div>
@@ -1717,7 +1724,7 @@
                 <div class="person-card ${payerId === person.id ? 'selected' : ''}" onclick="selectPayer(${person.id})">
                     <div class="person-info">
                         <div class="person-name">${person.name}</div>
-                        <div class="person-phone">${person.phone}</div>
+                        <div class="person-phone">${displayPhone(person.phone)}</div>
                     </div>
                     ${payerId === person.id ? '<div class="checkmark"></div>' : ''}
                 </div>
@@ -2491,7 +2498,7 @@ Important:
                                 ${person.name}
                                 ${isPayer ? '<span style="font-size:0.75rem;background:rgba(10,132,255,0.12);color:var(--primary);padding:0.15rem 0.5rem;border-radius:999px;margin-left:0.4rem;font-weight:600;">Paid</span>' : ''}
                             </div>
-                            <div style="font-size:0.8rem;color:var(--text-secondary);">${person.phone}</div>
+                            <div style="font-size:0.8rem;color:var(--text-secondary);">${displayPhone(person.phone)}</div>
                             ${isPayer ? `<div style="font-size:0.78rem;color:var(--text-secondary);margin-top:0.2rem;">Their share · collecting the rest</div>` : ''}
                         </div>
                         <div class="person-summary-amount" style="${isPayer ? 'color:var(--primary)' : ''}">
