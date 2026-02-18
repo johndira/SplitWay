@@ -990,6 +990,7 @@
             padding: 1rem;
             border-radius: 12px;
             margin-bottom: 0.75rem;
+            border: 2px solid var(--border);
             display: flex;
             flex-direction: column;
             align-items: stretch;
@@ -1571,11 +1572,6 @@
                 <div class="summary-card">
                     <div class="summary-total" id="totalAmount">$0.00</div>
                     <div class="summary-label">Total Bill</div>
-                </div>
-
-                <div style="background: rgba(10, 132, 255, 0.1); padding: 1rem; border-radius: 12px; margin-bottom: 1rem;">
-                    <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Paid by</div>
-                    <div style="font-size: 1.25rem; font-weight: 600;" id="payerName"></div>
                 </div>
 
                 <div id="summaryList"></div>
@@ -2724,7 +2720,7 @@ Important:
 
             // ── Header card: grand total ───────────────────────────────────
             document.getElementById('totalAmount').textContent = `$${grandTotal.toFixed(2)}`;
-            document.getElementById('payerName').textContent   = payer ? payer.name : 'Unknown';
+            // payerName element removed — payer shown via 'Paid' badge in summaryList
 
             // ── Footer breakdown ───────────────────────────────────────────
             document.getElementById('footerSubtotal').textContent = `$${subtotalAmt.toFixed(2)}`;
