@@ -859,6 +859,43 @@
             cursor: pointer;
         }
 
+        /* Undo toast */
+        .undo-toast {
+            position: fixed;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(120px);
+            background: #1D1D1F;
+            color: #fff;
+            padding: 0.75rem 1rem 0.75rem 1.25rem;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 0.9rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 9999;
+            white-space: nowrap;
+        }
+        .undo-toast.visible {
+            transform: translateX(-50%) translateY(0);
+        }
+        .undo-toast-btn {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 7px;
+            padding: 0.35rem 0.85rem;
+            font-weight: 700;
+            font-size: 0.88rem;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .undo-toast-btn:hover {
+            background: var(--primary-dark);
+        }
+
                 /* Summary */
         .summary-card {
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
@@ -1415,6 +1452,12 @@
             </div>
         </div>
 
+        <!-- Undo toast -->
+        <div class="undo-toast" id="undoToast">
+            <span id="undoToastLabel">"Item" removed</span>
+            <button class="undo-toast-btn" onclick="undoRemove()">Undo</button>
+        </div>
+
         <!-- Custom Split Modal -->
         <div class="modal" id="customSplitModal">
             <div class="modal-content">
@@ -1445,6 +1488,8 @@
         let payerId = null;
         let currentMode = 'scan'; // 'scan' | 'manual'
         let receiptImageData = null; // base64 data URL of selected receipt image
+        let undoStack = []; // { item, index } for undo on item removal
+        let undoToastTimer = null;
 
         // ─── API Key management ───────────────────────────────────────────────
         const API_KEY_STORAGE = 'splitway_api_key';
@@ -2108,11 +2153,39 @@ Important:
         }
 
         function removeItem(index) {
+            const removed = receiptItems[index];
+            undoStack.push({ item: JSON.parse(JSON.stringify(removed)), index });
             receiptItems.splice(index, 1);
             const foodItems = receiptItems.filter(i => !i.isFee);
             subtotalBase = foodItems.reduce((sum, i) => sum + i.price, 0);
             renderItems();
             refreshTipDisplay();
+            showUndoToast(removed.name);
+        }
+
+        function showUndoToast(itemName) {
+            const toast = document.getElementById('undoToast');
+            document.getElementById('undoToastLabel').textContent = `"${itemName}" removed`;
+            toast.classList.add('visible');
+            clearTimeout(undoToastTimer);
+            undoToastTimer = setTimeout(() => toast.classList.remove('visible'), 4000);
+        }
+
+        function undoRemove() {
+            if (!undoStack.length) return;
+            const { item, index } = undoStack.pop();
+            receiptItems.splice(index, 0, item);
+            const foodItems = receiptItems.filter(i => !i.isFee);
+            subtotalBase = foodItems.reduce((sum, i) => sum + i.price, 0);
+            renderItems();
+            refreshTipDisplay();
+            // If no more undos, hide toast; otherwise update label
+            if (undoStack.length === 0) {
+                clearTimeout(undoToastTimer);
+                document.getElementById('undoToast').classList.remove('visible');
+            } else {
+                showUndoToast(undoStack[undoStack.length - 1].item.name);
+            }
         }
 
                 // ── Tip expand/collapse toggle ─────────────────────────────────────
