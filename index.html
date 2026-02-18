@@ -2612,10 +2612,6 @@ Important:
                 const btn = document.getElementById('copyMsgBtn');
                 confirm.style.display = 'block';
                 btn.textContent = '✅ Copied!';
-                setTimeout(() => {
-                    confirm.style.display = 'none';
-                    btn.textContent = '📋 Copy Message';
-                }, 4000);
             }).catch(() => {
                 // Fallback for browsers that block clipboard API
                 const ta = document.createElement('textarea');
@@ -2629,7 +2625,6 @@ Important:
                 document.body.removeChild(ta);
                 const confirm = document.getElementById('copyConfirm');
                 confirm.style.display = 'block';
-                setTimeout(() => confirm.style.display = 'none', 4000);
             });
         }
 
