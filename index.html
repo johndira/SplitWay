@@ -1488,7 +1488,10 @@
                     <input type="text" id="restaurantName" placeholder="e.g., Nobu, Chipotle…" autocomplete="off" style="margin-top:0.35rem;">
                 </div>
 
-                <button class="btn-primary" onclick="sendPaymentRequests()">📱 Send Text Requests</button>
+                <button class="btn-primary" onclick="sendPaymentRequests()" id="copyMsgBtn">📋 Copy Message</button>
+                <p id="copyConfirm" style="display:none; text-align:center; color:var(--success); font-weight:600; margin:0.5rem 0 0;">
+                    ✅ Copied! Open your group chat and paste.
+                </p>
                 <button class="btn-secondary" onclick="startOver()">Start Over</button>
             </div>
         </div>
@@ -2603,11 +2606,31 @@ Important:
             message += `─────────────────\n`;
             message += `Sent via SplitWay`;
 
-            // iOS requires & between numbers, Android uses , — build both and try iOS format
-            const phones = people.map(p => p.phone.replace(/\D/g, ''));
-            const recipients = phones.join('&');
-            const smsUrl = `sms:${recipients}&body=${encodeURIComponent(message)}`;
-            window.location.href = smsUrl;
+            // Copy to clipboard — works reliably on iOS and Android
+            navigator.clipboard.writeText(message).then(() => {
+                const confirm = document.getElementById('copyConfirm');
+                const btn = document.getElementById('copyMsgBtn');
+                confirm.style.display = 'block';
+                btn.textContent = '✅ Copied!';
+                setTimeout(() => {
+                    confirm.style.display = 'none';
+                    btn.textContent = '📋 Copy Message';
+                }, 4000);
+            }).catch(() => {
+                // Fallback for browsers that block clipboard API
+                const ta = document.createElement('textarea');
+                ta.value = message;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.focus();
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                const confirm = document.getElementById('copyConfirm');
+                confirm.style.display = 'block';
+                setTimeout(() => confirm.style.display = 'none', 4000);
+            });
         }
 
         function startOver() {
