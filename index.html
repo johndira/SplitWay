@@ -532,6 +532,15 @@
         .item-name {
             font-weight: 600;
             color: var(--text-primary);
+            border-radius: 5px;
+            padding: 0.1rem 0.25rem;
+            margin: -0.1rem -0.25rem;
+            outline: none;
+            cursor: text;
+        }
+        .item-name:focus {
+            background: rgba(10,132,255,0.07);
+            box-shadow: 0 0 0 2px rgba(10,132,255,0.25);
         }
 
         .item-assignees {
@@ -545,7 +554,16 @@
             color: var(--success);
             text-align: right;
             white-space: nowrap;
-            padding-top: 0.1rem;
+            padding: 0.1rem 0.25rem;
+            margin: -0.1rem -0.25rem;
+            border-radius: 5px;
+            outline: none;
+            cursor: text;
+        }
+        .item-price:focus {
+            background: rgba(10,132,255,0.07);
+            box-shadow: 0 0 0 2px rgba(10,132,255,0.25);
+            color: var(--text-primary);
         }
 
         .selector-cell {
@@ -2271,6 +2289,30 @@ Important:
             refreshTipDisplay();
         }
 
+        function saveItemName(el, index) {
+            const newName = el.textContent.trim();
+            if (!newName) {
+                el.textContent = receiptItems[index].name; // restore if empty
+                return;
+            }
+            receiptItems[index].name = newName;
+        }
+
+        function saveItemPrice(el, index) {
+            const raw = el.textContent.replace(/[^0-9.]/g, '');
+            const price = parseFloat(raw);
+            if (isNaN(price) || price < 0) {
+                el.textContent = '$' + receiptItems[index].price.toFixed(2); // restore
+                return;
+            }
+            receiptItems[index].price = parseFloat(price.toFixed(2));
+            el.textContent = '$' + receiptItems[index].price.toFixed(2);
+            // Recalculate subtotal
+            const foodItems = receiptItems.filter(i => !i.isFee);
+            subtotalBase = foodItems.reduce((sum, i) => sum + i.price, 0);
+            refreshTipDisplay();
+        }
+
         function removeItem(index) {
             const removed = receiptItems[index];
             undoStack.push({ item: JSON.parse(JSON.stringify(removed)), index });
@@ -2403,10 +2445,23 @@ Important:
                 html += `
                     <div class="item-row ${assigned ? 'item-row-assigned' : ''}" data-row="${actualIndex}">
                         <div class="item-name-block">
-                            <div class="item-name">${item.name}</div>
+                            <div class="item-name"
+                                 contenteditable="true"
+                                 spellcheck="false"
+                                 data-index="${actualIndex}"
+                                 onblur="saveItemName(this, ${actualIndex})"
+                                 onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+                                 title="Tap to edit name">${item.name}</div>
                             <div class="assignees-cell">${buildAssigneesHtml(item)}</div>
                         </div>
-                        <div class="item-price">$${item.price.toFixed(2)}</div>
+                        <div class="item-price"
+                             contenteditable="true"
+                             spellcheck="false"
+                             inputmode="decimal"
+                             data-index="${actualIndex}"
+                             onblur="saveItemPrice(this, ${actualIndex})"
+                             onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+                             title="Tap to edit price">$${item.price.toFixed(2)}</div>
                         <div class="selector-cell">
                             ${buildSelectorHtml(item, actualIndex)}
                             <button class="remove-item-btn" onclick="removeItem(${actualIndex})" title="Remove item">✕</button>
