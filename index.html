@@ -2301,25 +2301,50 @@ Important:
                     </select>`;
         }
 
+        // Store previous assignedTo when Change is clicked, so we can restore on cancel
+        let _changeSnapshot = null;
+
         function openChangeDropdown(index) {
+            // Snapshot current assignment so we can restore if user cancels
+            _changeSnapshot = { index, prev: [...receiptItems[index].assignedTo] };
+
+            // Clear assignment — removes green highlight immediately
+            receiptItems[index].assignedTo = [];
+
+            // Remove green class from the row
+            const row = document.querySelector(`.item-row[data-row="${index}"]`);
+            if (row) row.classList.remove('item-row-assigned');
+
+            // Hide badge, show & trigger the select
             const cell = document.getElementById(`assignedCell_${index}`);
             if (!cell) return;
             cell.querySelector('.assigned-badge').style.display = 'none';
             const sel = document.getElementById(`changeSelect_${index}`);
             sel.style.display = 'block';
-            sel.focus();
+            sel.value = '';
+
+            // Use a tiny timeout so the element is visible before we simulate a click
+            setTimeout(() => {
+                sel.focus();
+                // Trigger native picker on mobile via a real click event
+                sel.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+            }, 30);
         }
 
         function closeChangeDropdown(index) {
-            const cell = document.getElementById(`assignedCell_${index}`);
-            if (!cell) return;
             // Small delay so onchange fires before blur hides the select
             setTimeout(() => {
                 const sel = document.getElementById(`changeSelect_${index}`);
                 if (!sel) return;
-                sel.style.display = 'none';
-                const badge = cell.querySelector('.assigned-badge');
-                if (badge) badge.style.display = '';
+
+                // If nothing was chosen (still unassigned) and we have a snapshot, restore
+                if (receiptItems[index].assignedTo.length === 0 && _changeSnapshot && _changeSnapshot.index === index) {
+                    receiptItems[index].assignedTo = _changeSnapshot.prev;
+                    _changeSnapshot = null;
+                    updateRow(index);
+                } else {
+                    _changeSnapshot = null;
+                }
             }, 150);
         }
 
