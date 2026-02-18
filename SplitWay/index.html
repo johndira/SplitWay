@@ -1,0 +1,2360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SplitWay - Smart Bill Splitting</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Epilogue:wght@600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0A84FF;
+            --primary-dark: #0066CC;
+            --success: #30D158;
+            --warning: #FF9F0A;
+            --danger: #FF453A;
+            --background: #F5F5F7;
+            --card-bg: #FFFFFF;
+            --text-primary: #1D1D1F;
+            --text-secondary: #86868B;
+            --border: #D2D2D7;
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.16);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        .app-container {
+            max-width: 480px;
+            margin: 0 auto;
+            min-height: 100vh;
+            background: var(--card-bg);
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 3rem 1.5rem 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 300px;
+            height: 300px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            animation: float 20s infinite ease-in-out;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(30px, -30px) rotate(120deg); }
+            66% { transform: translate(-20px, 20px) rotate(240deg); }
+        }
+
+        .header h1 {
+            font-family: 'Epilogue', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 0.25rem;
+            position: relative;
+            z-index: 1;
+            letter-spacing: -0.02em;
+        }
+
+        .header p {
+            font-size: 0.95rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Main Content */
+        .content {
+            padding: 1.5rem;
+        }
+
+        .step {
+            display: none;
+            animation: fadeInUp 0.4s ease-out;
+        }
+
+        .step.active {
+            display: block;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .step-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .step-dot.active {
+            background: var(--primary);
+            width: 24px;
+            border-radius: 4px;
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            background: var(--card-bg);
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.1);
+        }
+
+        /* Person Card */
+        .person-card {
+            background: var(--background);
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 2px solid transparent;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .person-card:hover {
+            border-color: var(--primary);
+        }
+
+        .person-card.selected {
+            border-color: var(--primary);
+            background: rgba(10, 132, 255, 0.1);
+        }
+
+        .person-card .checkmark {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .person-card.selected .checkmark {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .person-card.selected .checkmark::after {
+            content: '✓';
+            color: white;
+            font-weight: bold;
+        }
+
+        .person-info {
+            flex: 1;
+        }
+
+        .person-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .person-phone {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .remove-btn {
+            background: transparent;
+            border: none;
+            color: var(--danger);
+            font-size: 1.25rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            transition: transform 0.2s ease;
+        }
+
+        .remove-btn:hover {
+            transform: scale(1.2);
+        }
+
+        .add-person-btn {
+            width: 100%;
+            padding: 1rem;
+            background: transparent;
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            color: var(--primary);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 1rem;
+        }
+
+        .add-person-btn:hover {
+            border-color: var(--primary);
+            background: rgba(10, 132, 255, 0.05);
+        }
+
+        .add-random-btn {
+            width: 100%;
+            padding: 0.85rem 1rem 0.6rem;
+            background: transparent;
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            color: var(--success);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 1rem;
+            margin-top: 0.75rem;
+            text-align: center;
+            line-height: 1.3;
+        }
+
+        .add-random-btn:hover {
+            border-color: var(--success);
+            background: rgba(48, 209, 88, 0.05);
+        }
+
+        .add-random-btn span {
+            display: block;
+            font-size: 0.75rem;
+            font-style: italic;
+            color: var(--text-secondary);
+            font-weight: 400;
+            margin-top: 0.15rem;
+        }
+
+        /* Saved contacts */
+        .saved-contacts-section {
+            margin-bottom: 1.25rem;
+        }
+
+        .saved-contacts-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.6rem;
+        }
+
+        .contact-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .contact-chip {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.75rem;
+            background: rgba(10, 132, 255, 0.08);
+            border: 1.5px solid rgba(10, 132, 255, 0.25);
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--primary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .contact-chip:hover {
+            background: rgba(10, 132, 255, 0.15);
+            border-color: var(--primary);
+            transform: translateY(-1px);
+        }
+
+        .contact-chip .chip-plus {
+            font-size: 1rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        /* API Key Setup Screen */
+        .setup-screen {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: var(--background);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        .setup-screen.visible { display: flex; }
+        .setup-card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: var(--shadow-lg);
+        }
+        .setup-card h2 {
+            font-family: 'Epilogue', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 800;
+            margin-bottom: 0.4rem;
+        }
+        .setup-card p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+        }
+        .api-key-input-wrap {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+        .api-key-input-wrap input {
+            padding-right: 3rem;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+        .toggle-key-btn {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            padding: 0.25rem;
+        }
+        .setup-note {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            margin-top: 0.75rem;
+            text-align: center;
+        }
+        .setup-note a { color: var(--primary); text-decoration: none; }
+
+        /* Scan mode toggle on Step 3 */
+        .mode-toggle {
+            display: flex;
+            background: var(--background);
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 1.25rem;
+            gap: 4px;
+        }
+        .mode-btn {
+            flex: 1;
+            padding: 0.6rem;
+            border: none;
+            border-radius: 9px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: transparent;
+            color: var(--text-secondary);
+        }
+        .mode-btn.active {
+            background: var(--card-bg);
+            color: var(--primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* Upload zone */
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 14px;
+            padding: 2rem 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 0.75rem;
+            background: var(--background);
+        }
+        .upload-zone:hover, .upload-zone.drag-over {
+            border-color: var(--primary);
+            background: rgba(10,132,255,0.04);
+        }
+        .upload-zone-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+        .upload-zone-text { font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem; }
+        .upload-zone-sub  { font-size: 0.82rem; color: var(--text-secondary); }
+
+        /* Preview after image selected */
+        .img-preview-wrap {
+            position: relative;
+            margin-bottom: 0.75rem;
+            border-radius: 12px;
+            overflow: hidden;
+            display: none;
+        }
+        .img-preview-wrap img {
+            width: 100%;
+            display: block;
+            border-radius: 12px;
+        }
+        .img-preview-overlay {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            display: flex;
+            gap: 0.4rem;
+        }
+        .img-action-btn {
+            background: rgba(0,0,0,0.6);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.4rem 0.7rem;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Scanning overlay */
+        .scan-status {
+            display: none;
+            text-align: center;
+            padding: 1.5rem;
+            background: rgba(10,132,255,0.06);
+            border: 2px solid rgba(10,132,255,0.2);
+            border-radius: 12px;
+            margin-bottom: 0.75rem;
+        }
+        .scan-status.visible { display: block; }
+        .scan-status .spinner {
+            width: 36px; height: 36px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 0.75rem;
+        }
+
+        /* Receipt Items */
+
+        .item-row {
+            display: grid;
+            grid-template-columns: 1fr auto 120px;
+            gap: 0.75rem;
+            align-items: start;
+            padding: 1rem;
+            background: var(--background);
+            border-radius: 12px;
+            margin-bottom: 0.75rem;
+            transition: background 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+            border: 2px solid transparent;
+        }
+
+        .item-row:hover {
+            box-shadow: var(--shadow-sm);
+        }
+
+        .item-row-assigned {
+            background: rgba(48, 209, 88, 0.09);
+            border-color: rgba(48, 209, 88, 0.4);
+        }
+
+        .item-row-assigned:hover {
+            background: rgba(48, 209, 88, 0.13);
+        }
+
+        .item-name-block {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .item-name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .item-assignees {
+            font-size: 0.76rem;
+            font-weight: 500;
+            color: #1a8a3a;
+        }
+
+        .item-price {
+            font-weight: 600;
+            color: var(--success);
+            text-align: right;
+            white-space: nowrap;
+            padding-top: 0.1rem;
+        }
+
+        .selector-cell {
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .person-select {
+            padding: 0.5rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            background: var(--card-bg);
+            font-family: inherit;
+            cursor: pointer;
+            width: 120px;
+        }
+
+        .assigned-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.3rem;
+            padding: 0.45rem 0.6rem;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            white-space: nowrap;
+            width: 120px;
+            box-sizing: border-box;
+        }
+
+        .assigned-done {
+            background: rgba(48, 209, 88, 0.18);
+            border: 2px solid rgba(48, 209, 88, 0.55);
+            color: #1a8a3a;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .assigned-done:hover {
+            background: rgba(255, 69, 58, 0.08);
+            border-color: rgba(255, 69, 58, 0.5);
+            color: var(--danger);
+        }
+
+        .check-label { display: inline; }
+        .reset-label { display: none; }
+        .assigned-done:hover .check-label { display: none; }
+        .assigned-done:hover .reset-label { display: inline; }
+
+        .assigned-fee {
+            background: rgba(10, 132, 255, 0.08);
+            border: 2px solid rgba(10, 132, 255, 0.2);
+            color: var(--primary);
+            font-size: 0.78rem;
+            width: auto;
+        }
+
+        .assigned-check {
+            font-size: 0.95rem;
+            flex-shrink: 0;
+        }
+
+        /* Tip adjuster - larger unified box */
+        /* Tip adjuster (compact + collapsible) */
+        .tip-adjuster-compact {
+            background: rgba(255,159,10,0.08);
+            border: 2px solid rgba(255,159,10,0.35);
+            border-radius: 12px;
+            margin-bottom: 0.75rem;
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .tip-main-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.9rem 1rem;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .tip-main-row:hover {
+            background: rgba(255,159,10,0.04);
+        }
+
+        .tip-main-left {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .tip-label {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+        }
+
+        .tip-pct-badge {
+            background: rgba(255,159,10,0.15);
+            color: #cc7a00;
+            font-weight: 700;
+            font-size: 0.85rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 6px;
+            font-family: 'Epilogue', sans-serif;
+        }
+
+        .tip-main-right {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .tip-amount-display {
+            font-weight: 700;
+            color: #cc7a00;
+            font-size: 1.1rem;
+            font-family: 'Epilogue', sans-serif;
+        }
+
+        .tip-expand-icon {
+            color: var(--text-secondary);
+            font-size: 0.7rem;
+            transition: transform 0.2s ease;
+        }
+
+        .tip-expand-icon.expanded {
+            transform: rotate(180deg);
+        }
+
+        .tip-expanded-content {
+            padding: 0 1rem 1rem 1rem;
+            border-top: 1px solid rgba(255,159,10,0.2);
+            background: rgba(255,255,255,0.5);
+        }
+
+        .tip-pct-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.3rem;
+            margin-bottom: 0.75rem;
+            margin-top: 0.75rem;
+        }
+
+        .tip-pct-input {
+            width: 70px;
+            padding: 0.4rem 0.5rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            font-family: 'Epilogue', sans-serif;
+            text-align: center;
+            background: var(--card-bg);
+        }
+
+        .tip-pct-input:focus {
+            outline: none;
+            border-color: var(--warning);
+        }
+
+        .tip-pct-unit {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .tip-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border);
+            outline: none;
+            cursor: pointer;
+            margin-bottom: 0.75rem;
+        }
+
+        .tip-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--warning);
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(255,159,10,0.4);
+        }
+
+        .tip-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--warning);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 6px rgba(255,159,10,0.4);
+        }
+
+        .tip-manual-row {
+            margin-top: 0.5rem;
+        }
+
+        .tip-manual-input {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            background: var(--card-bg);
+        }
+
+        .tip-manual-input:focus {
+            outline: none;
+            border-color: var(--warning);
+        }
+
+                /* Add item button */
+        .add-item-btn {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: transparent;
+            border: 2px dashed var(--border);
+            border-radius: 10px;
+            color: var(--primary);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .add-item-btn:hover {
+            border-color: var(--primary);
+            background: rgba(10, 132, 255, 0.05);
+        }
+
+                /* Summary */
+        .summary-card {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 16px;
+            margin-bottom: 1rem;
+        }
+
+        .summary-total {
+            font-size: 2.5rem;
+            font-weight: 800;
+            font-family: 'Epilogue', sans-serif;
+            margin-bottom: 0.25rem;
+        }
+
+        .summary-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .person-summary {
+            background: var(--card-bg);
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .person-summary-name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .person-summary-amount {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            font-family: 'Epilogue', sans-serif;
+        }
+
+        /* Buttons */
+        .btn-primary {
+            width: 100%;
+            padding: 1rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 1rem;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-secondary {
+            width: 100%;
+            padding: 1rem;
+            background: var(--background);
+            color: var(--text-primary);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 0.75rem;
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--primary);
+            background: rgba(10, 132, 255, 0.05);
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .info-box {
+            background: rgba(10, 132, 255, 0.1);
+            border-left: 4px solid var(--primary);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1.5rem;
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+
+        .empty-state-text {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border-radius: 16px;
+            max-width: 400px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+            box-shadow: var(--shadow-lg);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .modal-title {
+            font-family: 'Epilogue', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .modal-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-footer {
+            padding: 1.5rem;
+            border-top: 2px solid var(--border);
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        /* Checkboxes */
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            background: var(--background);
+            border-radius: 12px;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+
+        .checkbox-label:hover {
+            border-color: var(--primary);
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            display: none;
+        }
+
+        .checkbox-custom {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            margin-right: 1rem;
+            position: relative;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .checkbox-label input[type="checkbox"]:checked + .checkbox-custom {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .checkbox-label input[type="checkbox"]:checked + .checkbox-custom::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        .checkbox-text {
+            font-weight: 500;
+            color: var(--text-primary);
+            flex: 1;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 1rem;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .modal-btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .modal-btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .modal-btn-secondary {
+            background: var(--background);
+            color: var(--text-primary);
+            border: 2px solid var(--border);
+        }
+
+        .modal-btn-secondary:hover {
+            border-color: var(--primary);
+            background: rgba(10, 132, 255, 0.05);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- API Key Setup Screen -->
+    <div class="setup-screen" id="setupScreen">
+        <div class="setup-card">
+            <h2>🔑 API Key</h2>
+            <p>SplitWay uses Claude AI to scan receipts. Enter your Anthropic API key — it's saved only on this device and never shared.</p>
+            <div class="form-group">
+                <label>Anthropic API Key</label>
+                <div class="api-key-input-wrap">
+                    <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." autocomplete="off">
+                    <button class="toggle-key-btn" onclick="toggleKeyVisibility()" title="Show/hide key">👁</button>
+                </div>
+            </div>
+            <button class="btn-primary" onclick="saveApiKey()" style="margin-top:0;">Save & Continue</button>
+            <div class="setup-note">
+                Don't have a key? Get one free at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-container">
+        <div class="header">
+            <h1>SplitWay</h1>
+            <p>Split bills instantly with AI</p>
+        </div>
+
+        <div class="content">
+            <div class="step-indicator">
+                <div class="step-dot active" data-step="1"></div>
+                <div class="step-dot" data-step="2"></div>
+                <div class="step-dot" data-step="3"></div>
+                <div class="step-dot" data-step="4"></div>
+                <div class="step-dot" data-step="5"></div>
+            </div>
+
+            <!-- Step 1: Add People -->
+            <div class="step active" id="step1">
+                <h2 style="font-family: 'Epilogue', sans-serif; font-size: 1.75rem; margin-bottom: 0.5rem;">Who's dining?</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Add the people you're splitting with</p>
+
+                <!-- Saved contacts section (shown when contacts exist) -->
+                <div class="saved-contacts-section" id="savedContactsSection" style="display:none;">
+                    <div class="saved-contacts-label">Recent Contacts</div>
+                    <div class="contact-chips" id="contactChips"></div>
+                </div>
+
+                <div id="peopleList"></div>
+
+                <button class="add-person-btn" onclick="showAddPersonForm()">+ Add Person</button>
+                <button class="add-random-btn" onclick="addRandomGroup()">
+                    + Add Random Group
+                    <span>Practice SplitWay</span>
+                </button>
+
+                <div id="addPersonForm" style="display: none; margin-top: 1rem; padding: 1.25rem; background: var(--background); border-radius: 12px;">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" id="personName" placeholder="e.g., Alex" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="tel" id="personPhone" placeholder="(555) 123-4567" autocomplete="off">
+                    </div>
+                    <button class="btn-primary" onclick="addPerson()">Add Person</button>
+                    <button class="btn-secondary" onclick="hideAddPersonForm()">Cancel</button>
+                </div>
+
+                <button class="btn-primary" onclick="goToStep(2)" id="continueStep1" style="display: none; margin-top: 1.5rem;">Continue</button>
+            </div>
+
+            <!-- Step 2: Select Who Paid -->
+            <div class="step" id="step2">
+                <h2 style="font-family: 'Epilogue', sans-serif; font-size: 1.75rem; margin-bottom: 0.5rem;">Who paid the bill?</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 2rem;">Select the person who covered the total</p>
+
+                <div id="payerList"></div>
+
+                <button class="btn-primary" onclick="goToStep(3)" id="continueStep2" style="display: none;">Continue to Receipt</button>
+                <button class="btn-secondary" onclick="goToStep(1)">← Back</button>
+            </div>
+
+            <!-- Step 3: Scan or Enter Items -->
+            <div class="step" id="step3">
+                <h2 style="font-family: 'Epilogue', sans-serif; font-size: 1.75rem; margin-bottom: 0.5rem;">Add items</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 1.25rem;">Scan your receipt or enter items manually</p>
+
+                <!-- Mode toggle -->
+                <div class="mode-toggle">
+                    <button class="mode-btn active" id="modeBtnScan" onclick="setMode('scan')">📷 Scan Receipt</button>
+                    <button class="mode-btn" id="modeBtnManual" onclick="setMode('manual')">✏️ Enter Manually</button>
+                </div>
+
+                <!-- SCAN MODE -->
+                <div id="scanMode">
+                    <!-- Upload zone (shown when no image) -->
+                    <div class="upload-zone" id="uploadZone"
+                         onclick="document.getElementById('receiptFileInput').click()"
+                         ondragover="event.preventDefault(); this.classList.add('drag-over')"
+                         ondragleave="this.classList.remove('drag-over')"
+                         ondrop="handleDrop(event)">
+                        <div class="upload-zone-icon">🧾</div>
+                        <div class="upload-zone-text">Tap to upload receipt photo</div>
+                        <div class="upload-zone-sub">JPG, PNG, HEIC · drag &amp; drop also works</div>
+                    </div>
+                    <input type="file" id="receiptFileInput" accept="image/*" capture="environment" style="display:none;" onchange="handleReceiptFile(event)">
+
+                    <!-- Image preview (shown after image selected) -->
+                    <div class="img-preview-wrap" id="imgPreviewWrap">
+                        <img id="imgPreview" alt="Receipt">
+                        <div class="img-preview-overlay">
+                            <button class="img-action-btn" onclick="clearReceiptImage()">✕ Clear</button>
+                        </div>
+                    </div>
+
+                    <!-- Scanning status -->
+                    <div class="scan-status" id="scanStatus">
+                        <div class="spinner"></div>
+                        <div style="font-weight:600; color:var(--text-primary);">Reading receipt…</div>
+                        <div style="font-size:0.82rem; color:var(--text-secondary); margin-top:0.25rem;">Claude AI is extracting your items</div>
+                    </div>
+
+                    <button class="btn-primary" id="scanBtn" onclick="scanReceipt()" style="display:none;">Scan Receipt</button>
+
+                    <div style="text-align:center; margin: 0.75rem 0; color:var(--text-secondary); font-size:0.85rem;">
+                        No API key? <button onclick="showSetupScreen()" style="background:none;border:none;color:var(--primary);font-weight:600;cursor:pointer;font-size:0.85rem;">Update key</button>
+                    </div>
+                </div>
+
+                <!-- MANUAL MODE -->
+                <div id="manualMode" style="display:none;">
+                    <div id="step3ItemsList"></div>
+
+                    <div id="step3AddForm" style="background: var(--background); border-radius: 12px; padding: 1.25rem; margin-bottom: 0.75rem;">
+                        <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.75rem; align-items: end;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>Item name</label>
+                                <input type="text" id="step3ItemName" placeholder="e.g., Burger" autocomplete="off" onkeydown="if(event.key==='Enter') addStep3Item()">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>Price ($)</label>
+                                <input type="number" id="step3ItemPrice" placeholder="0.00" min="0" step="0.01" style="width: 110px;" onkeydown="if(event.key==='Enter') addStep3Item()">
+                            </div>
+                        </div>
+                        <button class="btn-primary" onclick="addStep3Item()" style="margin-top: 0.75rem;">+ Add Item</button>
+                    </div>
+
+                    <div style="background: var(--background); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>Tax ($)</label>
+                                <input type="number" id="step3Tax" placeholder="0.00" min="0" step="0.01" oninput="updateStep3Total()">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>Other fees ($)</label>
+                                <input type="number" id="step3Fees" placeholder="0.00" min="0" step="0.01" oninput="updateStep3Total()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: rgba(10,132,255,0.07); border-radius: 12px; margin-bottom: 1rem;">
+                        <span style="font-weight: 600; color: var(--text-primary);">Subtotal</span>
+                        <span style="font-weight: 700; font-size: 1.2rem; font-family: 'Epilogue', sans-serif; color: var(--primary);" id="step3Subtotal">$0.00</span>
+                    </div>
+
+                    <button class="btn-primary" onclick="confirmStep3()" id="continueStep3" style="display:none;">Continue to Assign</button>
+                </div>
+
+                <button class="btn-secondary" onclick="goToStep(2)" style="margin-top:0.75rem;">← Back</button>
+            </div>
+
+            <!-- Step 4: Assign Items -->
+            <div class="step" id="step4">
+                <h2 style="font-family: 'Epilogue', sans-serif; font-size: 1.75rem; margin-bottom: 0.5rem;">Assign items</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 2rem;">Who ordered what?</p>
+
+                <div id="itemsList"></div>
+
+<!-- Tip adjuster (collapsible) -->
+                <div class="tip-adjuster-compact" id="tipAdjuster" style="display:none;">
+                    <!-- Main row - always visible, clickable to expand -->
+                    <div class="tip-main-row" onclick="toggleTipExpanded()">
+                        <div class="tip-main-left">
+                            <span class="tip-label">💰 Tip</span>
+                            <span class="tip-pct-badge" id="tipPctBadge">18%</span>
+                        </div>
+                        <div class="tip-main-right">
+                            <span class="tip-amount-display" id="tipAmountDisplay">$0.00</span>
+                            <span class="tip-expand-icon" id="tipExpandIcon">▼</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Expanded controls - hidden by default -->
+                    <div class="tip-expanded-content" id="tipExpandedContent" style="display:none;">
+                        <div class="tip-pct-row">
+                            <input type="number" class="tip-pct-input" id="tipPctInput"
+                                   min="0" max="100" step="1" value="18"
+                                   oninput="onTipPctInputChange(this.value)">
+                            <span class="tip-pct-unit">%</span>
+                        </div>
+                        
+                        <input type="range" class="tip-slider" id="tipSlider"
+                               min="0" max="40" step="0.5" value="18"
+                               oninput="onTipSliderChange(this.value)">
+                        
+                        <div class="tip-manual-row">
+                            <input type="number" class="tip-manual-input" id="tipManualInput"
+                                   min="0" step="0.01" placeholder="Custom amount ($)"
+                                   oninput="onTipManualChange(this.value)">
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn-primary" onclick="goToStep(5)">Calculate Split</button>
+                <button class="btn-secondary" onclick="goToStep(3)">← Back</button>
+            </div>
+
+            <!-- Step 5: Summary -->
+            <div class="step" id="step5">
+                <h2 style="font-family: 'Epilogue', sans-serif; font-size: 1.75rem; margin-bottom: 0.5rem;">Split summary</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 2rem;">Here's who owes what</p>
+
+                <div class="summary-card">
+                    <div class="summary-total" id="totalAmount">$0.00</div>
+                    <div class="summary-label">Total Bill</div>
+                </div>
+
+                <div style="background: rgba(10, 132, 255, 0.1); padding: 1rem; border-radius: 12px; margin-bottom: 1rem;">
+                    <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Paid by</div>
+                    <div style="font-size: 1.25rem; font-weight: 600;" id="payerName"></div>
+                </div>
+
+                <div id="summaryList"></div>
+
+                <!-- Grand total footer -->
+                <div style="margin-top:1rem; padding:1rem; background:var(--background);
+                            border-radius:12px; border:2px solid var(--border);">
+                    <div style="display:flex; justify-content:space-between; align-items:center;
+                                margin-bottom:0.4rem;">
+                        <span style="font-size:0.9rem; color:var(--text-secondary);">Subtotal</span>
+                        <span style="font-weight:600;" id="footerSubtotal">$0.00</span>
+                    </div>
+                    <!-- Dynamic tax & fee lines injected here by renderSummary() -->
+                    <div id="footerFeeLines"></div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;
+                                margin-bottom:0.75rem;">
+                        <span style="font-size:0.9rem; color:var(--text-secondary);">Tip</span>
+                        <span style="font-weight:600;" id="footerTip">$0.00</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;
+                                padding-top:0.65rem; border-top:2px solid var(--border);">
+                        <span style="font-size:1rem; font-weight:700;">Total</span>
+                        <span style="font-size:1.35rem; font-weight:800;
+                                     font-family:'Epilogue',sans-serif;
+                                     color:var(--primary);" id="footerTotal">$0.00</span>
+                    </div>
+                </div>
+
+                <button class="btn-primary" onclick="sendPaymentRequests()">Send Text Requests</button>
+                <button class="btn-secondary" onclick="startOver()">Start Over</button>
+            </div>
+        </div>
+
+        <!-- Custom Split Modal -->
+        <div class="modal" id="customSplitModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title">Split Item</div>
+                    <div class="modal-subtitle">
+                        <strong id="modalItemName"></strong> 
+                        <span id="modalItemPrice" style="color: var(--success); margin-left: 0.5rem;"></span>
+                    </div>
+                </div>
+                <div class="modal-body">
+                    <p style="margin-bottom: 1rem; color: var(--text-secondary);">Select who should split this item:</p>
+                    <div id="peopleCheckboxes"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="modal-btn modal-btn-secondary" onclick="closeCustomSplitModal()">Cancel</button>
+                    <button class="modal-btn modal-btn-primary" onclick="applyCustomSplit()">Apply Split</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let people = [];
+        let currentStep = 1;
+        let receiptItems = [];
+        let payerId = null;
+        let currentMode = 'scan'; // 'scan' | 'manual'
+        let receiptImageData = null; // base64 data URL of selected receipt image
+
+        // ─── API Key management ───────────────────────────────────────────────
+        const API_KEY_STORAGE = 'splitway_api_key';
+
+        function getApiKey() {
+            return localStorage.getItem(API_KEY_STORAGE) || '';
+        }
+
+        function saveApiKey() {
+            const val = document.getElementById('apiKeyInput').value.trim();
+            if (!val.startsWith('sk-ant-')) {
+                alert('That doesn\'t look like a valid Anthropic API key (should start with sk-ant-)');
+                return;
+            }
+            localStorage.setItem(API_KEY_STORAGE, val);
+            document.getElementById('setupScreen').classList.remove('visible');
+        }
+
+        function showSetupScreen() {
+            document.getElementById('apiKeyInput').value = getApiKey();
+            document.getElementById('setupScreen').classList.add('visible');
+        }
+
+        function toggleKeyVisibility() {
+            const inp = document.getElementById('apiKeyInput');
+            inp.type = inp.type === 'password' ? 'text' : 'password';
+        }
+
+        function initApiKey() {
+            if (!getApiKey()) {
+                showSetupScreen();
+            }
+        }
+
+        // ─── localStorage helpers ─────────────────────────────────────────────
+        const STORAGE_KEY = 'splitway_contacts';
+
+        function getSavedContacts() {
+            try {
+                return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveContact(name, phone) {
+            const contacts = getSavedContacts();
+            const already = contacts.find(c => c.phone === phone);
+            if (!already) {
+                contacts.unshift({ name, phone });
+                // Keep only last 20 contacts
+                if (contacts.length > 20) contacts.pop();
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(contacts));
+            }
+        }
+
+        function renderSavedContacts() {
+            const contacts = getSavedContacts();
+            const section = document.getElementById('savedContactsSection');
+            const chips   = document.getElementById('contactChips');
+
+            // Only show contacts not already added to the current group
+            const addedPhones = new Set(people.map(p => p.phone));
+            const available = contacts.filter(c => !addedPhones.has(c.phone));
+
+            if (available.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+
+            section.style.display = 'block';
+            chips.innerHTML = available.map(c => `
+                <div class="contact-chip" onclick="addContactFromChip('${c.name.replace(/'/g, "\\'")}', '${c.phone}')">
+                    <span class="chip-plus">+</span>
+                    ${c.name}
+                </div>
+            `).join('');
+        }
+
+        function addContactFromChip(name, phone) {
+            people.push({ name, phone, id: Date.now() });
+            renderPeople();
+            renderSavedContacts();
+        }
+
+        // ─── Random group generator ───────────────────────────────────────────
+        const RANDOM_NAMES  = ['Jordan','Taylor','Morgan','Casey','Alex','Jamie','Riley','Quinn','Avery','Dakota','Skyler','Cameron','Peyton','Reese','Drew'];
+        const RANDOM_PHONES = () => {
+            const area = String(Math.floor(Math.random() * 800) + 200);
+            const mid  = String(Math.floor(Math.random() * 900) + 100);
+            const end  = String(Math.floor(Math.random() * 9000) + 1000);
+            return `(${area}) ${mid}-${end}`;
+        };
+
+        function addRandomGroup() {
+            // Clear any existing people and start fresh
+            people = [];
+            payerId = null;
+
+            // Pick 4-5 unique random names
+            const shuffled = [...RANDOM_NAMES].sort(() => Math.random() - 0.5);
+            const count = Math.random() > 0.5 ? 5 : 4;
+            const chosen = shuffled.slice(0, count);
+
+            chosen.forEach((name, i) => {
+                people.push({ name, phone: RANDOM_PHONES(), id: Date.now() + i });
+            });
+
+            renderPeople();
+            renderSavedContacts();
+
+            // Brief flash animation on the list so user knows something happened
+            const list = document.getElementById('peopleList');
+            list.style.transition = 'opacity 0.15s';
+            list.style.opacity = '0.4';
+            setTimeout(() => { list.style.opacity = '1'; }, 150);
+        }
+
+        // ─── Step navigation ─────────────────────────────────────────────────
+        function goToStep(step) {
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+            document.getElementById(`step${step}`).classList.add('active');
+
+            document.querySelectorAll('.step-dot').forEach((dot, index) => {
+                dot.classList.toggle('active', index + 1 === step);
+            });
+
+            currentStep = step;
+
+            if (step === 2) renderPayerSelection();
+            if (step === 3) {
+                step3Items = [];
+                renderStep3Items();
+                // Reset scan mode UI
+                clearReceiptImage();
+                setMode('scan');
+                const errEl = document.querySelector('#scanMode .scan-error');
+                if (errEl) errEl.remove();
+            }
+            if (step === 5) renderSummary();
+        }
+
+        // ─── Person management ────────────────────────────────────────────────
+        function showAddPersonForm() {
+            document.getElementById('addPersonForm').style.display = 'block';
+            document.getElementById('personName').focus();
+        }
+
+        function hideAddPersonForm() {
+            document.getElementById('addPersonForm').style.display = 'none';
+            document.getElementById('personName').value = '';
+            document.getElementById('personPhone').value = '';
+        }
+
+        function addPerson() {
+            const name  = document.getElementById('personName').value.trim();
+            const phone = document.getElementById('personPhone').value.trim();
+
+            if (!name || !phone) {
+                alert('Please enter both name and phone number');
+                return;
+            }
+
+            people.push({ name, phone, id: Date.now() });
+
+            // Persist to localStorage so this person shows as a saved contact next time
+            saveContact(name, phone);
+
+            renderPeople();
+            renderSavedContacts();
+            hideAddPersonForm();
+        }
+
+        function removePerson(id) {
+            people = people.filter(p => p.id !== id);
+            if (payerId === id) payerId = null;
+            renderPeople();
+            renderSavedContacts();
+        }
+
+        function renderPeople() {
+            const list        = document.getElementById('peopleList');
+            const continueBtn = document.getElementById('continueStep1');
+
+            if (people.length === 0) {
+                list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👥</div><div class="empty-state-text">No people added yet. Add at least 2 people to continue.</div></div>';
+                continueBtn.style.display = 'none';
+            } else {
+                list.innerHTML = people.map(person => `
+                    <div class="person-card">
+                        <div class="person-info">
+                            <div class="person-name">${person.name}</div>
+                            <div class="person-phone">${person.phone}</div>
+                        </div>
+                        <button class="remove-btn" onclick="removePerson(${person.id})">×</button>
+                    </div>
+                `).join('');
+
+                continueBtn.style.display = people.length >= 2 ? 'block' : 'none';
+            }
+        }
+
+        // Payer selection
+        function renderPayerSelection() {
+            const list = document.getElementById('payerList');
+            const continueBtn = document.getElementById('continueStep2');
+
+            list.innerHTML = people.map(person => `
+                <div class="person-card ${payerId === person.id ? 'selected' : ''}" onclick="selectPayer(${person.id})">
+                    <div class="person-info">
+                        <div class="person-name">${person.name}</div>
+                        <div class="person-phone">${person.phone}</div>
+                    </div>
+                    <div class="checkmark"></div>
+                </div>
+            `).join('');
+
+            continueBtn.style.display = payerId ? 'block' : 'none';
+        }
+
+        function selectPayer(id) {
+            payerId = id;
+            renderPayerSelection();
+        }
+
+        // ── Step 3: mode toggle ────────────────────────────────────────────────
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('scanMode').style.display   = mode === 'scan'   ? 'block' : 'none';
+            document.getElementById('manualMode').style.display = mode === 'manual' ? 'block' : 'none';
+            document.getElementById('modeBtnScan').classList.toggle('active',   mode === 'scan');
+            document.getElementById('modeBtnManual').classList.toggle('active', mode === 'manual');
+        }
+
+        // ── Receipt image handling ─────────────────────────────────────────────
+        function handleReceiptFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            loadReceiptImage(file);
+        }
+
+        function handleDrop(event) {
+            event.preventDefault();
+            document.getElementById('uploadZone').classList.remove('drag-over');
+            const file = event.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) loadReceiptImage(file);
+        }
+
+        function loadReceiptImage(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                receiptImageData = e.target.result;
+                const img = document.getElementById('imgPreview');
+                img.src = receiptImageData;
+                document.getElementById('uploadZone').style.display    = 'none';
+                document.getElementById('imgPreviewWrap').style.display = 'block';
+                document.getElementById('scanBtn').style.display        = 'block';
+                document.getElementById('scanStatus').classList.remove('visible');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearReceiptImage() {
+            receiptImageData = null;
+            document.getElementById('imgPreview').src                   = '';
+            document.getElementById('imgPreviewWrap').style.display     = 'none';
+            document.getElementById('uploadZone').style.display         = 'block';
+            document.getElementById('scanBtn').style.display            = 'none';
+            document.getElementById('scanStatus').classList.remove('visible');
+            document.getElementById('receiptFileInput').value           = '';
+        }
+
+        // ── Claude Vision receipt scan ─────────────────────────────────────────
+        async function scanReceipt() {
+            const apiKey = getApiKey();
+            if (!apiKey) { showSetupScreen(); return; }
+            if (!receiptImageData) return;
+
+            // Show scanning state
+            document.getElementById('scanBtn').style.display = 'none';
+            document.getElementById('scanStatus').classList.add('visible');
+
+            try {
+                const base64 = receiptImageData.split(',')[1];
+                const mimeMatch = receiptImageData.match(/data:(image\/[^;]+);/);
+                const mediaType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+
+                const response = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'anthropic-version': '2023-06-01',
+                        'x-api-key': apiKey,
+                        'anthropic-dangerous-direct-browser-access': 'true'
+                    },
+                    body: JSON.stringify({
+                        model: 'claude-opus-4-5-20251101',
+                        max_tokens: 1024,
+                        messages: [{
+                            role: 'user',
+                            content: [
+                                {
+                                    type: 'image',
+                                    source: { type: 'base64', media_type: mediaType, data: base64 }
+                                },
+                                {
+                                    type: 'text',
+                                    text: `You are a receipt parser. Extract ALL data from this receipt image very carefully.
+
+Return ONLY valid JSON, no markdown, no explanation. Use this exact structure:
+{
+  "items": [{"name": "Item Name", "qty": 1, "unit_price": 0.00, "total_price": 0.00}],
+  "subtotal": 0.00,
+  "tax": 0.00,
+  "fees": [{"name": "Fee Name", "price": 0.00}],
+  "tip": 0.00
+}
+
+Rules for "items":
+- Only food/drink line items ordered (everything ABOVE the subtotal line)
+- "qty" = quantity shown on the left of the item (default 1 if not shown)
+- "unit_price" = price per single item (total_price divided by qty)
+- "total_price" = total line price shown for that item
+
+Rules for charges below the subtotal line:
+- "subtotal" = the subtotal amount shown on the receipt
+- "tax" = the tax line amount (0 if not present)
+- "tip" = ONLY if a tip/gratuity dollar amount is already printed on the receipt (pre-added by restaurant). Use 0 if tip is blank or not present.
+- "fees" = ALL other charges below the subtotal that are NOT tax and NOT tip. This includes: service charge, admin fee, delivery fee, surcharge, service fee, convenience fee, etc. Capture every single one. Empty array [] if none.
+  - Each fee: {"name": "exact name from receipt", "price": dollar amount as number}
+
+Important:
+- A "service charge" or "service fee" is a FEE, not a tip, unless the receipt explicitly labels it "gratuity" or "tip"
+- Capture EVERY line between subtotal and total — do not skip any
+- All prices must be numbers (not strings)
+- If a field is missing from the receipt use 0 or []`
+                                }
+                            ]
+                        }]
+                    })
+                });
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    if (response.status === 401) throw new Error('Invalid API key. Tap "Update key" to fix it.');
+                    throw new Error(`API error ${response.status}: ${errText.slice(0, 150)}`);
+                }
+
+                const data = await response.json();
+                const rawText = data.content?.[0]?.text || '';
+
+                let cleaned = rawText.replace(/```json|```/g, '').trim();
+                const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+                if (jsonMatch) cleaned = jsonMatch[0];
+                if (!cleaned || cleaned.length < 5) throw new Error('Empty response from AI. Try a clearer photo.');
+
+                const parsed = JSON.parse(cleaned);
+                buildReceiptItemsFromParsed(parsed);
+
+                // Success — move to step 4
+                document.getElementById('scanStatus').classList.remove('visible');
+                goToStep(4);
+
+            } catch (err) {
+                document.getElementById('scanStatus').classList.remove('visible');
+                document.getElementById('scanBtn').style.display = 'block';
+
+                const friendly = `
+                    <div style="padding:1rem;background:rgba(255,69,58,0.08);border:2px solid rgba(255,69,58,0.3);
+                                border-radius:12px;margin-bottom:0.75rem;">
+                        <div style="font-weight:700;color:var(--danger);margin-bottom:0.4rem;">⚠️ Scan failed</div>
+                        <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.5rem;">${err.message}</div>
+                        <div style="font-size:0.82rem;color:var(--text-primary);">
+                            → Switch to <strong>Enter Manually</strong> to type items in instead.
+                        </div>
+                    </div>`;
+                // Insert error above scan button
+                const scanMode = document.getElementById('scanMode');
+                const existing = scanMode.querySelector('.scan-error');
+                if (existing) existing.remove();
+                const errDiv = document.createElement('div');
+                errDiv.className = 'scan-error';
+                errDiv.innerHTML = friendly;
+                document.getElementById('scanBtn').before(errDiv);
+            }
+        }
+
+        // Build receiptItems array from Claude's parsed JSON
+        function buildReceiptItemsFromParsed(parsed) {
+            receiptItems = [];
+
+            // Food/drink items
+            (parsed.items || []).forEach(i => {
+                const qty       = Math.max(1, parseInt(i.qty) || 1);
+                const unitPrice = parseFloat(i.unit_price) || (parseFloat(i.total_price) / qty) || 0;
+                for (let n = 0; n < qty; n++) {
+                    receiptItems.push({
+                        name:       qty > 1 ? `${i.name} (${n + 1}/${qty})` : i.name,
+                        price:      parseFloat(unitPrice.toFixed(2)),
+                        assignedTo: []
+                    });
+                }
+            });
+
+            subtotalBase = receiptItems.reduce((s, i) => s + i.price, 0);
+
+            // Tax
+            const taxAmt = parseFloat(parsed.tax) || 0;
+            if (taxAmt > 0)
+                receiptItems.push({ name: 'Tax', price: parseFloat(taxAmt.toFixed(2)), assignedTo: [], isFee: true });
+
+            // Other fees (service charge, admin fee, delivery fee, etc.)
+            (parsed.fees || []).forEach(f => {
+                const feeAmt = parseFloat(f.price) || 0;
+                if (feeAmt > 0)
+                    receiptItems.push({ name: f.name, price: parseFloat(feeAmt.toFixed(2)), assignedTo: [], isFee: true });
+            });
+
+            // Tip — use pre-printed amount if present, otherwise default to 18%
+            const receiptTip = parseFloat(parsed.tip) || 0;
+            if (receiptTip > 0) {
+                // Pre-printed tip: set manual override and back-calculate %
+                tipManual  = parseFloat(receiptTip.toFixed(2));
+                tipPercent = subtotalBase > 0
+                    ? parseFloat((receiptTip / subtotalBase * 100).toFixed(1))
+                    : 18;
+            } else {
+                // No tip on receipt: default to 18%
+                tipPercent = 18;
+                tipManual  = null;
+            }
+
+            receiptItems.push({
+                name: 'Tip',
+                price: receiptTip > 0 ? tipManual : parseFloat((subtotalBase * 0.18).toFixed(2)),
+                assignedTo: [],
+                isFee: true,
+                isTip: true
+            });
+
+            // Sync tip UI
+            document.getElementById('tipAdjuster').style.display = 'block';
+            document.getElementById('tipSlider').value = Math.min(40, tipPercent);
+            if (receiptTip > 0) {
+                // Show the manual $ field pre-filled
+                document.getElementById('tipManualInput').value = tipManual.toFixed(2);
+                // Auto-expand the tip adjuster so user can see it was pre-filled
+                if (!tipExpanded) toggleTipExpanded();
+            }
+            refreshTipDisplay();
+            renderItems();
+        }
+
+        // ── Step 3: manual item entry ──────────────────────────────────────────
+        let step3Items = []; // [{name, price}]
+
+        function renderStep3Items() {
+            const list = document.getElementById('step3ItemsList');
+            if (step3Items.length === 0) {
+                list.innerHTML = '';
+            } else {
+                list.innerHTML = step3Items.map((item, i) => `
+                    <div style="display:flex; justify-content:space-between; align-items:center;
+                                padding:0.85rem 1rem; background:var(--background);
+                                border-radius:10px; margin-bottom:0.5rem; border:2px solid transparent;">
+                        <span style="font-weight:600;">${item.name}</span>
+                        <div style="display:flex; align-items:center; gap:0.75rem;">
+                            <span style="font-weight:600; color:var(--success);">$${item.price.toFixed(2)}</span>
+                            <button onclick="removeStep3Item(${i})" style="background:none;border:none;color:var(--danger);font-size:1.2rem;cursor:pointer;padding:0 0.25rem;">×</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            updateStep3Total();
+        }
+
+        function addStep3Item() {
+            const nameEl  = document.getElementById('step3ItemName');
+            const priceEl = document.getElementById('step3ItemPrice');
+            const name    = nameEl.value.trim();
+            const price   = parseFloat(priceEl.value);
+
+            if (!name) { nameEl.focus(); return; }
+            if (isNaN(price) || price < 0) { priceEl.focus(); return; }
+
+            step3Items.push({ name, price: parseFloat(price.toFixed(2)) });
+            nameEl.value  = '';
+            priceEl.value = '';
+            nameEl.focus();
+            renderStep3Items();
+        }
+
+        function removeStep3Item(index) {
+            step3Items.splice(index, 1);
+            renderStep3Items();
+        }
+
+        function updateStep3Total() {
+            const itemsTotal = step3Items.reduce((s, i) => s + i.price, 0);
+            const tax  = parseFloat(document.getElementById('step3Tax').value)  || 0;
+            const fees = parseFloat(document.getElementById('step3Fees').value) || 0;
+            const subtotal = itemsTotal + tax + fees;
+
+            document.getElementById('step3Subtotal').textContent = '$' + subtotal.toFixed(2);
+            document.getElementById('continueStep3').style.display =
+                step3Items.length > 0 ? 'block' : 'none';
+        }
+
+        function confirmStep3() {
+            const tax  = parseFloat(document.getElementById('step3Tax').value)  || 0;
+            const fees = parseFloat(document.getElementById('step3Fees').value) || 0;
+
+            // Build receiptItems from step3Items
+            receiptItems = step3Items.map(i => ({ name: i.name, price: i.price, assignedTo: [] }));
+
+            subtotalBase = receiptItems.reduce((s, i) => s + i.price, 0);
+
+            if (tax > 0)  receiptItems.push({ name: 'Tax',       price: parseFloat(tax.toFixed(2)),  assignedTo: [], isFee: true });
+            if (fees > 0) receiptItems.push({ name: 'Other Fees', price: parseFloat(fees.toFixed(2)), assignedTo: [], isFee: true });
+
+            tipPercent = 18;
+            tipManual  = null;
+            const initialTip = parseFloat((subtotalBase * 0.18).toFixed(2));
+            receiptItems.push({ name: 'Tip', price: initialTip, assignedTo: [], isFee: true, isTip: true });
+
+            document.getElementById('tipAdjuster').style.display = 'block';
+            document.getElementById('tipSlider').value = tipPercent;
+            refreshTipDisplay();
+            renderItems();
+            goToStep(4);
+        }
+
+        // ── Tip state ──────────────────────────────────────────────────────────
+        let tipPercent   = 18;
+        let tipManual    = null;   // null = use percentage, number = override
+        let subtotalBase = 0;      // subtotal of food items only (no tax/fees/tip)
+
+        function getTipAmount() {
+            if (tipManual !== null) return tipManual;
+            return parseFloat((subtotalBase * tipPercent / 100).toFixed(2));
+        }
+
+        function refreshTipDisplay() {
+            const tipAmt = getTipAmount();
+
+            // Dollar amount on the right
+            document.getElementById('tipAmountDisplay').textContent = '$' + tipAmt.toFixed(2);
+
+            // Percentage in the centre — derive from subtotalBase if in manual $ mode
+            const displayPct = subtotalBase > 0
+                ? parseFloat((tipAmt / subtotalBase * 100).toFixed(1))
+                : tipPercent;
+            document.getElementById('tipPctInput').value = displayPct;
+            
+            // Update badge on main row
+            const badge = document.getElementById('tipPctBadge');
+            if (badge) badge.textContent = displayPct.toFixed(displayPct % 1 === 0 ? 0 : 1) + '%';
+
+            // Slider — clamp to max 40 for display, but allow higher percentages via input
+            document.getElementById('tipSlider').value = Math.min(40, displayPct);
+
+            // Update tip row price in receiptItems
+            const tipIdx = receiptItems.findIndex(i => i.isTip);
+            if (tipIdx !== -1) receiptItems[tipIdx].price = tipAmt;
+
+            // Update live tip row in items list without full re-render
+            const tipRow = document.querySelector('.item-row[data-tip="1"]');
+            if (tipRow) {
+                const priceEl = tipRow.querySelector('.item-price');
+                if (priceEl) priceEl.textContent = '$' + tipAmt.toFixed(2);
+            }
+        }
+
+        // Slider moved → update tipPercent, clear manual override
+        function onTipSliderChange(val) {
+            tipPercent = parseFloat(val);
+            tipManual  = null;
+            document.getElementById('tipManualInput').value = '';
+            refreshTipDisplay();
+        }
+
+        // Centre % input edited → update tipPercent, clear manual override
+        function onTipPctInputChange(val) {
+            const num = parseFloat(val);
+            if (isNaN(num) || num < 0) return;
+            tipPercent = num;
+            tipManual  = null;
+            document.getElementById('tipManualInput').value = '';
+            refreshTipDisplay();
+        }
+
+        // Custom $ amount entered → back-calculate % for slider + centre display
+        function onTipManualChange(val) {
+            const num = parseFloat(val);
+            if (isNaN(num) || num < 0) {
+                tipManual = null;
+                refreshTipDisplay();
+                return;
+            }
+            tipManual = num;
+            // Back-calculate what % this dollar amount represents
+            if (subtotalBase > 0) {
+                tipPercent = parseFloat((num / subtotalBase * 100).toFixed(1));
+            }
+            refreshTipDisplay();
+        }
+
+        // ── Add item manually ───────────────────────────────────────────────
+        function showAddItemModal() {
+            const itemName = prompt('Item name:', '');
+            if (!itemName || itemName.trim() === '') return;
+            
+            const priceStr = prompt('Item price ($):', '0.00');
+            const price = parseFloat(priceStr);
+            if (isNaN(price) || price < 0) {
+                alert('Invalid price');
+                return;
+            }
+            
+            // Insert before the first fee
+            const firstFeeIdx = receiptItems.findIndex(i => i.isFee);
+            const newItem = {
+                name: itemName.trim(),
+                price: parseFloat(price.toFixed(2)),
+                assignedTo: []
+            };
+            
+            if (firstFeeIdx !== -1) {
+                receiptItems.splice(firstFeeIdx, 0, newItem);
+            } else {
+                receiptItems.push(newItem);
+            }
+            
+            // Update subtotalBase
+            const foodItems = receiptItems.filter(i => !i.isFee);
+            subtotalBase = foodItems.reduce((sum, i) => sum + i.price, 0);
+            
+            renderItems();
+            refreshTipDisplay();
+        }
+
+                // ── Tip expand/collapse toggle ─────────────────────────────────────
+        let tipExpanded = false;
+
+        function toggleTipExpanded() {
+            tipExpanded = !tipExpanded;
+            const content = document.getElementById('tipExpandedContent');
+            const icon    = document.getElementById('tipExpandIcon');
+            
+            if (tipExpanded) {
+                content.style.display = 'block';
+                icon.classList.add('expanded');
+            } else {
+                content.style.display = 'none';
+                icon.classList.remove('expanded');
+            }
+        }
+
+
+        function getAssignedLabel(item) {
+            if (item.assignedTo.length === 0) return null;
+            if (item.assignedTo.length === people.length) return { text: 'Split – All', split: true };
+            if (item.assignedTo.length > 1) {
+                const names = item.assignedTo.map(id => people.find(p => p.id === id)?.name).filter(Boolean);
+                return { text: names.join(' & '), split: true };
+            }
+            const person = people.find(p => p.id === item.assignedTo[0]);
+            return person ? { text: person.name, split: false } : null;
+        }
+
+        function buildSelectorHtml(item, index) {
+            const assigned = getAssignedLabel(item);
+
+            if (assigned) {
+                return `<div class="assigned-badge assigned-done" onclick="resetItem(${index})">
+                            <span class="assigned-check">&#10003;</span>
+                            <span class="check-label">Assigned</span>
+                            <span class="reset-label">&#10005; Reset</span>
+                        </div>`;
+            }
+
+            const options = people.map(p =>
+                `<option value="person__${p.id}">${p.name}</option>`
+            ).join('');
+
+            return `<select class="person-select" onchange="assignItem(${index}, this.value)">
+                        <option value="">Assign to...</option>
+                        ${options}
+                        <option value="all">Split – All</option>
+                        <option value="custom">Split – Custom</option>
+                    </select>`;
+        }
+
+        function buildAssigneesHtml(item) {
+            if (item.assignedTo.length === 0) return '';
+            const names = item.assignedTo
+                .map(id => people.find(p => p.id === id)?.name)
+                .filter(Boolean);
+            if (names.length === 0) return '';
+            const label = names.length === people.length ? 'Everyone' : names.join(', ');
+            return `<div class="item-assignees">&#10003; ${label}</div>`;
+        }
+
+                // Full render — only called once after receipt is parsed
+        function renderItems() {
+            const list = document.getElementById('itemsList');
+
+            // Separate food items from fees
+            const foodItems = receiptItems.filter(i => !i.isFee);
+            const feeItems  = receiptItems.filter(i => i.isFee);
+            
+            let html = '';
+            
+            // Render food items
+            foodItems.forEach((item, index) => {
+                const actualIndex = receiptItems.indexOf(item);
+                const assigned = getAssignedLabel(item);
+                html += `
+                    <div class="item-row ${assigned ? 'item-row-assigned' : ''}" data-row="${actualIndex}">
+                        <div class="item-name-block">
+                            <div class="item-name">${item.name}</div>
+                            <div class="assignees-cell">${buildAssigneesHtml(item)}</div>
+                        </div>
+                        <div class="item-price">$${item.price.toFixed(2)}</div>
+                        <div class="selector-cell">${buildSelectorHtml(item, actualIndex)}</div>
+                    </div>
+                `;
+            });
+            
+            // Add "+ Add Item" button
+            html += `
+                <button class="add-item-btn" onclick="showAddItemModal()">
+                    + Add Item
+                </button>
+            `;
+
+            // Render non-tip fee items (Tax, Service Charge, Admin Fee, etc.)
+            const nonTipFees = feeItems.filter(i => !i.isTip);
+            if (nonTipFees.length > 0) {
+                html += `<div style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);
+                                     text-transform:uppercase;letter-spacing:0.07em;
+                                     margin:0.25rem 0 0.5rem;">Taxes &amp; Fees</div>`;
+                nonTipFees.forEach(item => {
+                    html += `
+                        <div class="item-row" style="background:rgba(10,132,255,0.05);border-color:rgba(10,132,255,0.15);">
+                            <div class="item-name-block"><div class="item-name">${item.name}</div></div>
+                            <div class="item-price">$${item.price.toFixed(2)}</div>
+                            <div class="assigned-badge assigned-fee">Split evenly</div>
+                        </div>
+                    `;
+                });
+            }
+
+            list.innerHTML = html;
+        }
+
+                // Surgical update — swaps selector cell AND assignees label, zero flicker
+        function updateRow(index) {
+            const item = receiptItems[index];
+            const row  = document.querySelector(`.item-row[data-row="${index}"]`);
+            if (!row) return;
+
+            const assigned = getAssignedLabel(item);
+            row.classList.toggle('item-row-assigned', !!assigned);
+
+            // Update the badge/dropdown
+            const cell = row.querySelector('.selector-cell');
+            if (cell) cell.innerHTML = buildSelectorHtml(item, index);
+
+            // Update the assignees name line below the item name
+            const nameCell = row.querySelector('.assignees-cell');
+            if (nameCell) nameCell.innerHTML = buildAssigneesHtml(item);
+        }
+
+                function assignItem(itemIndex, value) {
+            if (!value || value === '') return;
+
+            if (value === 'custom') {
+                showCustomSplitModal(itemIndex);
+                return;
+            }
+
+            if (value === 'all') {
+                receiptItems[itemIndex].assignedTo = people.map(p => p.id);
+            } else if (value.startsWith('person__')) {
+                // Extract the original ID string and find matching person
+                const rawId = value.slice(8); // remove "person__"
+                const person = people.find(p => String(p.id) === rawId);
+                if (!person) return;
+                receiptItems[itemIndex].assignedTo = [person.id];
+            } else {
+                return;
+            }
+
+            updateRow(itemIndex);
+        }
+
+        function resetItem(itemIndex) {
+            receiptItems[itemIndex].assignedTo = [];
+            updateRow(itemIndex);
+        }
+
+        function showCustomSplitModal(itemIndex) {
+            const item = receiptItems[itemIndex];
+            const modal = document.getElementById('customSplitModal');
+            const modalContent = document.getElementById('customSplitContent');
+            
+            document.getElementById('modalItemName').textContent = item.name;
+            document.getElementById('modalItemPrice').textContent = `$${item.price.toFixed(2)}`;
+            
+            // Create checkboxes for each person
+            const checkboxes = people.map(person => `
+                <label class="checkbox-label">
+                    <input type="checkbox" value="${person.id}" ${item.assignedTo.includes(person.id) ? 'checked' : ''}>
+                    <span class="checkbox-custom"></span>
+                    <span class="checkbox-text">${person.name}</span>
+                </label>
+            `).join('');
+            
+            document.getElementById('peopleCheckboxes').innerHTML = checkboxes;
+            
+            // Store the current item index
+            modal.dataset.itemIndex = itemIndex;
+            
+            modal.style.display = 'flex';
+        }
+
+        function closeCustomSplitModal() {
+            document.getElementById('customSplitModal').style.display = 'none';
+        }
+
+        function applyCustomSplit() {
+            const modal = document.getElementById('customSplitModal');
+            const itemIndex = parseInt(modal.dataset.itemIndex);
+            
+            // Get all checked checkboxes - match by string comparison to avoid float issues
+            const checkboxes = document.querySelectorAll('#peopleCheckboxes input[type="checkbox"]:checked');
+            const selectedIds = Array.from(checkboxes).map(cb => {
+                const rawVal = cb.value;
+                const person = people.find(p => String(p.id) === rawVal);
+                return person ? person.id : null;
+            }).filter(id => id !== null);
+            
+            if (selectedIds.length === 0) {
+                alert('Please select at least one person');
+                return;
+            }
+            
+            receiptItems[itemIndex].assignedTo = selectedIds;
+            closeCustomSplitModal();
+            updateRow(itemIndex);
+        }
+
+        // Calculate and display summary
+        function calculateSplit() {
+            const summary = {};
+            people.forEach(p => summary[p.id] = 0);
+
+            // Ensure tip row has the latest amount before calculating
+            const tipIdx = receiptItems.findIndex(i => i.isTip);
+            if (tipIdx !== -1) receiptItems[tipIdx].price = getTipAmount();
+
+            // Split fees (tax, tip, other charges) evenly among all diners
+            const fees = receiptItems.filter(item => item.isFee);
+            const totalFees = fees.reduce((sum, fee) => sum + fee.price, 0);
+            const feePerPerson = people.length > 0 ? totalFees / people.length : 0;
+
+            // Assign food/drink items per person
+            receiptItems.forEach(item => {
+                if (item.isFee) return;
+                if (item.assignedTo.length > 0) {
+                    const splitAmount = item.price / item.assignedTo.length;
+                    item.assignedTo.forEach(personId => {
+                        summary[personId] = (summary[personId] || 0) + splitAmount;
+                    });
+                }
+            });
+
+            // Add fees share to everyone
+            people.forEach(p => {
+                summary[p.id] = (summary[p.id] || 0) + feePerPerson;
+            });
+
+            return summary;
+        }
+
+        function renderSummary() {
+            const summary = calculateSplit();
+            const payer   = people.find(p => p.id === payerId);
+
+            // ── Breakdown numbers ──────────────────────────────────────────
+            const foodItems  = receiptItems.filter(i => !i.isFee);
+            const taxFeeItems = receiptItems.filter(i => i.isFee && !i.isTip);
+            const tipItem    = receiptItems.find(i => i.isTip);
+
+            const subtotalAmt = foodItems.reduce((s, i) => s + i.price, 0);
+            const taxFeeAmt   = taxFeeItems.reduce((s, i) => s + i.price, 0);
+            const tipAmt      = tipItem ? getTipAmount() : 0;
+            const grandTotal  = subtotalAmt + taxFeeAmt + tipAmt;
+
+            // ── Header card: grand total ───────────────────────────────────
+            document.getElementById('totalAmount').textContent = `$${grandTotal.toFixed(2)}`;
+            document.getElementById('payerName').textContent   = payer ? payer.name : 'Unknown';
+
+            // ── Footer breakdown ───────────────────────────────────────────
+            document.getElementById('footerSubtotal').textContent = `$${subtotalAmt.toFixed(2)}`;
+
+            // Render each tax/fee line individually
+            document.getElementById('footerFeeLines').innerHTML = taxFeeItems.map(item => `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+                    <span style="font-size:0.9rem; color:var(--text-secondary);">${item.name}</span>
+                    <span style="font-weight:600;">$${item.price.toFixed(2)}</span>
+                </div>
+            `).join('');
+
+            document.getElementById('footerTip').textContent   = `$${tipAmt.toFixed(2)}`;
+            document.getElementById('footerTotal').textContent = `$${grandTotal.toFixed(2)}`;
+
+            // ── Per-person list ────────────────────────────────────────────
+            const list = document.getElementById('summaryList');
+            list.innerHTML = people.map(person => {
+                const amount  = summary[person.id] || 0;
+                const isPayer = person.id === payerId;
+
+                // Payer's "cost" = their own share of the food items + their fee share
+                // (same as everyone else — they just also fronted the rest)
+                const payerOwnShare = amount;
+
+                return `
+                    <div class="person-summary">
+                        <div>
+                            <div class="person-summary-name">
+                                ${person.name}
+                                ${isPayer ? '<span style="font-size:0.75rem;background:rgba(10,132,255,0.12);color:var(--primary);padding:0.15rem 0.5rem;border-radius:999px;margin-left:0.4rem;font-weight:600;">Paid</span>' : ''}
+                            </div>
+                            <div style="font-size:0.8rem;color:var(--text-secondary);">${person.phone}</div>
+                            ${isPayer ? `<div style="font-size:0.78rem;color:var(--text-secondary);margin-top:0.2rem;">Their share · collecting the rest</div>` : ''}
+                        </div>
+                        <div class="person-summary-amount" style="${isPayer ? 'color:var(--primary)' : ''}">
+                            $${payerOwnShare.toFixed(2)}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Final actions
+        function sendPaymentRequests() {
+            const summary = calculateSplit();
+            const payer = people.find(p => p.id === payerId);
+            
+            if (!payer) {
+                alert('Error: No payer selected');
+                return;
+            }
+
+            // Send SMS to each person who owes money
+            people.forEach(person => {
+                if (person.id !== payerId) {
+                    const amount = (summary[person.id] || 0).toFixed(2);
+                    const message = `You owe ${payer.name} $${amount}`;
+                    const smsUrl = `sms:${person.phone}?body=${encodeURIComponent(message)}`;
+                    
+                    // Open SMS app (this will work on mobile devices)
+                    window.open(smsUrl, '_blank');
+                }
+            });
+
+            // Show confirmation
+            const nonPayers = people.filter(p => p.id !== payerId).length;
+            alert(`Opening ${nonPayers} text message${nonPayers !== 1 ? 's' : ''} with payment request${nonPayers !== 1 ? 's' : ''}!`);
+        }
+
+        function startOver() {
+            people = [];
+            receiptItems = [];
+            step3Items = [];
+            payerId = null;
+            goToStep(1);
+            renderPeople();
+            renderSavedContacts();
+        }
+
+        // Initialize
+        initApiKey();
+        renderPeople();
+        renderSavedContacts();
+    </script>
+</body>
+</html>
