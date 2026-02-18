@@ -2603,9 +2603,10 @@ Important:
             message += `─────────────────\n`;
             message += `Sent via SplitWay`;
 
-            // Comma-separated recipients opens a group thread on iOS/Android — include everyone
-            const recipients = people.map(p => p.phone).join(',');
-            const smsUrl = `sms:${recipients}?body=${encodeURIComponent(message)}`;
+            // iOS requires & between numbers, Android uses , — build both and try iOS format
+            const phones = people.map(p => p.phone.replace(/\D/g, ''));
+            const recipients = phones.join('&');
+            const smsUrl = `sms:${recipients}&body=${encodeURIComponent(message)}`;
             window.location.href = smsUrl;
         }
 
