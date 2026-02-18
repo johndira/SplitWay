@@ -958,20 +958,88 @@
             border-radius: 12px;
             margin-bottom: 0.75rem;
             display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            cursor: pointer;
+            transition: box-shadow 0.2s;
+        }
+        .person-summary:hover {
+            box-shadow: var(--shadow-sm);
+        }
+        .person-summary-row {
+            display: flex;
             justify-content: space-between;
             align-items: center;
+            width: 100%;
         }
-
         .person-summary-name {
             font-weight: 600;
             color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.25rem;
         }
-
+        .summary-expand-icon {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-left: 0.25rem;
+            display: inline-block;
+            transition: transform 0.2s ease;
+        }
+        .person-summary.expanded .summary-expand-icon {
+            transform: rotate(180deg);
+        }
         .person-summary-amount {
             font-size: 1.5rem;
             font-weight: 700;
             color: var(--primary);
             font-family: 'Epilogue', sans-serif;
+            flex-shrink: 0;
+        }
+        .person-summary-breakdown {
+            display: none;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--border);
+        }
+        .person-summary-breakdown.open {
+            display: block;
+        }
+        .breakdown-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 0.5rem;
+            padding: 0.25rem 0;
+        }
+        .breakdown-item-left {
+            display: flex;
+            flex-direction: column;
+        }
+        .breakdown-item-name {
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+        .breakdown-item-note {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        .breakdown-item-price {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            flex-shrink: 0;
+        }
+        .breakdown-fees-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.25rem 0;
+            margin-top: 0.25rem;
+            border-top: 1px dashed var(--border);
+            font-size: 0.82rem;
+            color: var(--text-secondary);
         }
 
         /* Buttons */
@@ -2554,21 +2622,86 @@ Important:
                 const payerOwnShare = amount;
 
                 return `
-                    <div class="person-summary">
-                        <div>
-                            <div class="person-summary-name">
-                                ${person.name}
-                                ${isPayer ? '<span style="font-size:0.75rem;background:rgba(10,132,255,0.12);color:var(--primary);padding:0.15rem 0.5rem;border-radius:999px;margin-left:0.4rem;font-weight:600;">Paid</span>' : ''}
+                    <div class="person-summary" id="summary_${person.id}" onclick="toggleSummaryBreakdown(${person.id})">
+                        <div class="person-summary-row">
+                            <div>
+                                <div class="person-summary-name">
+                                    ${person.name}
+                                    ${isPayer ? '<span style="font-size:0.75rem;background:rgba(10,132,255,0.12);color:var(--primary);padding:0.15rem 0.5rem;border-radius:999px;font-weight:600;">Paid</span>' : ''}
+                                    <span class="summary-expand-icon">▼</span>
+                                </div>
+                                <div style="font-size:0.8rem;color:var(--text-secondary);">${displayPhone(person.phone)}</div>
+                                ${isPayer ? `<div style="font-size:0.78rem;color:var(--text-secondary);margin-top:0.2rem;">Their share · collecting the rest</div>` : ''}
                             </div>
-                            <div style="font-size:0.8rem;color:var(--text-secondary);">${displayPhone(person.phone)}</div>
-                            ${isPayer ? `<div style="font-size:0.78rem;color:var(--text-secondary);margin-top:0.2rem;">Their share · collecting the rest</div>` : ''}
+                            <div class="person-summary-amount" style="${isPayer ? 'color:var(--primary)' : ''}">
+                                $${payerOwnShare.toFixed(2)}
+                            </div>
                         </div>
-                        <div class="person-summary-amount" style="${isPayer ? 'color:var(--primary)' : ''}">
-                            $${payerOwnShare.toFixed(2)}
-                        </div>
+                        <div class="person-summary-breakdown" id="breakdown_${person.id}"></div>
                     </div>
                 `;
             }).join('');
+        }
+
+        function getItemsForPerson(personId) {
+            const myItems = receiptItems.filter(i => !i.isFee && i.assignedTo.includes(personId));
+            const fees    = receiptItems.filter(i => i.isFee);
+            const totalFees = fees.reduce((s, i) => s + i.price, 0);
+            const feeShare  = people.length > 0 ? totalFees / people.length : 0;
+
+            const rows = myItems.map(item => {
+                const myShare = item.price / item.assignedTo.length;
+                let note = '';
+                if (item.assignedTo.length === people.length) {
+                    note = 'split with everyone';
+                } else if (item.assignedTo.length > 1) {
+                    const others = item.assignedTo
+                        .filter(id => id !== personId)
+                        .map(id => people.find(p => p.id === id)?.name)
+                        .filter(Boolean);
+                    note = `split with ${others.join(' & ')}`;
+                }
+                return { name: item.name, amount: myShare, note };
+            });
+
+            return { rows, feeShare };
+        }
+
+        function toggleSummaryBreakdown(personId) {
+            const card      = document.getElementById(`summary_${personId}`);
+            const breakdown = document.getElementById(`breakdown_${personId}`);
+            if (!card || !breakdown) return;
+
+            const isOpen = breakdown.classList.contains('open');
+
+            if (!isOpen && breakdown.innerHTML === '') {
+                // Build breakdown HTML on first open
+                const { rows, feeShare } = getItemsForPerson(personId);
+                let html = '';
+                if (rows.length === 0) {
+                    html += `<div class="breakdown-item"><span style="color:var(--text-secondary);font-size:0.85rem;">No items assigned</span></div>`;
+                } else {
+                    rows.forEach(r => {
+                        html += `
+                            <div class="breakdown-item">
+                                <div class="breakdown-item-left">
+                                    <span class="breakdown-item-name">${r.name}</span>
+                                    ${r.note ? `<span class="breakdown-item-note">${r.note}</span>` : ''}
+                                </div>
+                                <span class="breakdown-item-price">$${r.amount.toFixed(2)}</span>
+                            </div>`;
+                    });
+                }
+                html += `
+                    <div class="breakdown-fees-row">
+                        <span>Taxes, Fees &amp; Tip <span style="opacity:0.65;">(split evenly)</span></span>
+                        <span>$${feeShare.toFixed(2)}</span>
+                    </div>`;
+                breakdown.innerHTML = html;
+            }
+
+            breakdown.classList.toggle('open', !isOpen);
+            card.classList.toggle('expanded', !isOpen);
         }
 
         // Final actions
