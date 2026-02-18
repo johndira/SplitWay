@@ -1962,17 +1962,35 @@
         }
 
         function loadReceiptImage(file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                receiptImageData = e.target.result;
-                const img = document.getElementById('imgPreview');
-                img.src = receiptImageData;
-                document.getElementById('uploadZone').style.display    = 'none';
+            const img = new Image();
+            const objectUrl = URL.createObjectURL(file);
+            img.onload = () => {
+                URL.revokeObjectURL(objectUrl);
+
+                // Resize so longest side ≤ 1600px — plenty for OCR, well under 5MB
+                const MAX = 1600;
+                let { width, height } = img;
+                if (width > MAX || height > MAX) {
+                    if (width > height) { height = Math.round(height * MAX / width); width = MAX; }
+                    else                { width  = Math.round(width  * MAX / height); height = MAX; }
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width  = width;
+                canvas.height = height;
+                canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+
+                // JPEG at 0.82 quality — text stays sharp, file size drops ~80%
+                receiptImageData = canvas.toDataURL('image/jpeg', 0.82);
+
+                const preview = document.getElementById('imgPreview');
+                preview.src = receiptImageData;
+                document.getElementById('uploadZone').style.display     = 'none';
                 document.getElementById('imgPreviewWrap').style.display = 'block';
                 document.getElementById('scanBtn').style.display        = 'block';
                 document.getElementById('scanStatus').classList.remove('visible');
             };
-            reader.readAsDataURL(file);
+            img.src = objectUrl;
         }
 
         function clearReceiptImage() {
