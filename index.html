@@ -1076,25 +1076,30 @@
             color: var(--text-secondary);
         }
 
-        /* Venmo button */
-        .venmo-btn {
+        /* Payment buttons row */
+        .payment-btns {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.85rem;
+        }
+        .venmo-btn, .cashapp-btn {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 0.5rem;
-            width: 100%;
-            margin-top: 0.85rem;
-            padding: 0.65rem 1rem;
-            background: #008CFF;
+            gap: 0.4rem;
+            flex: 1;
+            padding: 0.65rem 0.75rem;
             color: white;
             border: none;
             border-radius: 10px;
             font-weight: 700;
-            font-size: 0.92rem;
+            font-size: 0.88rem;
             cursor: pointer;
             transition: opacity 0.2s;
         }
-        .venmo-btn:hover { opacity: 0.88; }
+        .venmo-btn  { background: #008CFF; }
+        .cashapp-btn { background: #00D632; }
+        .venmo-btn:hover, .cashapp-btn:hover { opacity: 0.88; }
 
         /* Buttons */
         .btn-primary {
@@ -2783,10 +2788,16 @@ Important:
                         <div class="person-summary-breakdown" id="breakdown_${person.id}">
                             <div id="breakdownItems_${person.id}"></div>
                             ${!isPayer ? `
-                            <button class="venmo-btn" onclick="event.stopPropagation(); requestVenmo(${person.id}, ${payerOwnShare.toFixed(2)})">
-                                <svg viewBox="0 0 24 24" fill="white" width="16" height="16"><path d="M19.1 1.6c.5.8.7 1.7.7 2.8 0 3.5-3 8-5.4 11.2H9.2L7 2.4l4.7-.5 1.1 9.1c1-1.7 2.3-4.4 2.3-6.2 0-1-.2-1.7-.5-2.3z"/></svg>
-                                Request $${payerOwnShare.toFixed(2)} via Venmo
-                            </button>` : ''}
+                            <div class="payment-btns">
+                                <button class="venmo-btn" onclick="event.stopPropagation(); requestVenmo(${person.id}, ${payerOwnShare.toFixed(2)})">
+                                    <svg viewBox="0 0 24 24" fill="white" width="15" height="15"><path d="M19.1 1.6c.5.8.7 1.7.7 2.8 0 3.5-3 8-5.4 11.2H9.2L7 2.4l4.7-.5 1.1 9.1c1-1.7 2.3-4.4 2.3-6.2 0-1-.2-1.7-.5-2.3z"/></svg>
+                                    Venmo $${payerOwnShare.toFixed(2)}
+                                </button>
+                                <button class="cashapp-btn" onclick="event.stopPropagation(); requestCashApp(${person.id}, ${payerOwnShare.toFixed(2)})">
+                                    <svg viewBox="0 0 24 24" fill="white" width="15" height="15"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm1.75 17.5c-.18.738-.84 1.25-1.75 1.25s-1.57-.512-1.75-1.25H9v-1h1.25c.18-.738.84-1.25 1.75-1.25s1.57.512 1.75 1.25H15v1h-1.25zM15 9.5c0 1.378-.944 2.5-2.25 2.856V13.5h-1.5v-1.144C9.944 12 9 10.878 9 9.5V9h1.5v.5c0 .828.672 1.5 1.5 1.5s1.5-.672 1.5-1.5V9H15v.5z"/></svg>
+                                    Cash App $${payerOwnShare.toFixed(2)}
+                                </button>
+                            </div>` : ''}
                         </div>
                     </div>
                 `;
@@ -2856,12 +2867,22 @@ Important:
         }
 
         function requestVenmo(personId, amount) {
-            const payer      = people.find(p => p.id === payerId);
             const restaurant = (document.getElementById('restaurantName').value || '').trim();
             const note       = restaurant ? `Dinner at ${restaurant} via SplitWay` : `Dinner via SplitWay`;
             const phone      = people.find(p => p.id === personId)?.phone.replace(/\D/g, '') || '';
             const venmoUrl   = `venmo://paycharge?txn=charge&recipients=${phone}&amount=${amount.toFixed(2)}&note=${encodeURIComponent(note)}`;
             window.location.href = venmoUrl;
+        }
+
+        function requestCashApp(personId, amount) {
+            const person     = people.find(p => p.id === personId);
+            const restaurant = (document.getElementById('restaurantName').value || '').trim();
+            const note       = restaurant ? `Dinner at ${restaurant} via SplitWay` : `Dinner via SplitWay`;
+            // Open Cash App then show hint — Cash App doesn't support phone-based pre-fill
+            window.location.href = 'cashapp://';
+            setTimeout(() => {
+                alert(`Cash App opened!\nSearch for ${person?.name} and request $${amount.toFixed(2)}\nNote: "${note}"`);
+            }, 600);
         }
 
         // Final actions
