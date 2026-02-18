@@ -1405,7 +1405,12 @@
                     </div>
                 </div>
 
-                <button class="btn-primary" onclick="sendPaymentRequests()">Send Text Requests</button>
+                <div class="form-group" style="margin-bottom:1rem;">
+                    <label style="font-size:0.85rem; color:var(--text-secondary);">Restaurant name (optional)</label>
+                    <input type="text" id="restaurantName" placeholder="e.g., Nobu, Chipotle…" autocomplete="off" style="margin-top:0.35rem;">
+                </div>
+
+                <button class="btn-primary" onclick="sendPaymentRequests()">📱 Send Text Requests</button>
                 <button class="btn-secondary" onclick="startOver()">Start Over</button>
             </div>
         </div>
@@ -2428,27 +2433,30 @@ Important:
         function sendPaymentRequests() {
             const summary = calculateSplit();
             const payer = people.find(p => p.id === payerId);
-            
+
             if (!payer) {
                 alert('Error: No payer selected');
                 return;
             }
 
-            // Send SMS to each person who owes money
-            people.forEach(person => {
-                if (person.id !== payerId) {
-                    const amount = (summary[person.id] || 0).toFixed(2);
-                    const message = `You owe ${payer.name} $${amount}`;
-                    const smsUrl = `sms:${person.phone}?body=${encodeURIComponent(message)}`;
-                    
-                    // Open SMS app (this will work on mobile devices)
-                    window.open(smsUrl, '_blank');
-                }
-            });
+            const restaurant = (document.getElementById('restaurantName').value || '').trim();
+            const nonPayers = people.filter(p => p.id !== payerId);
 
-            // Show confirmation
-            const nonPayers = people.filter(p => p.id !== payerId).length;
-            alert(`Opening ${nonPayers} text message${nonPayers !== 1 ? 's' : ''} with payment request${nonPayers !== 1 ? 's' : ''}!`);
+            if (nonPayers.length === 0) {
+                alert('No one else owes money!');
+                return;
+            }
+
+            // Open each SMS one at a time with a short delay so the browser doesn't block them
+            nonPayers.forEach((person, i) => {
+                setTimeout(() => {
+                    const amount = (summary[person.id] || 0).toFixed(2);
+                    const locationPart = restaurant ? ` our dinner at ${restaurant}` : ' our dinner';
+                    const message = `SplitWay has broken down${locationPart}, and you owe ${payer.name} $${amount}.`;
+                    const smsUrl = `sms:${person.phone}?body=${encodeURIComponent(message)}`;
+                    window.location.href = smsUrl;
+                }, i * 1500);
+            });
         }
 
         function startOver() {
