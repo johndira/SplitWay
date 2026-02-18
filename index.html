@@ -236,9 +236,24 @@
             padding: 0.5rem;
             transition: transform 0.2s ease;
         }
-
         .remove-btn:hover {
             transform: scale(1.2);
+        }
+        .edit-person-btn {
+            background: transparent;
+            border: none;
+            font-size: 1rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+        .edit-person-btn:hover {
+            opacity: 1;
+        }
+        .edit-person-form {
+            border-top: 1px solid var(--border);
+            padding-top: 0.75rem;
         }
 
         .add-person-btn {
@@ -1824,6 +1839,25 @@
             renderSavedContacts();
         }
 
+        function toggleEditPerson(id) {
+            const form = document.getElementById(`editForm_${id}`);
+            if (!form) return;
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function saveEditPerson(id) {
+            const person = people.find(p => p.id === id);
+            if (!person) return;
+            const newName  = document.getElementById(`editName_${id}`).value.trim();
+            const newPhone = document.getElementById(`editPhone_${id}`).value.trim();
+            if (!newName || !newPhone) return;
+            person.name  = newName;
+            person.phone = newPhone;
+            saveContact(newName, newPhone);
+            renderPeople();
+            renderSavedContacts();
+        }
+
         function renderPeople() {
             const list        = document.getElementById('peopleList');
             const continueBtn = document.getElementById('continueStep1');
@@ -1833,12 +1867,31 @@
                 continueBtn.style.display = 'none';
             } else {
                 list.innerHTML = people.map(person => `
-                    <div class="person-card">
-                        <div class="person-info">
-                            <div class="person-name">${person.name}</div>
-                            <div class="person-phone">${displayPhone(person.phone)}</div>
+                    <div class="person-card" id="personCard_${person.id}" style="flex-direction:column; align-items:stretch;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div class="person-info">
+                                <div class="person-name">${person.name}</div>
+                                <div class="person-phone">${displayPhone(person.phone)}</div>
+                            </div>
+                            <div style="display:flex; gap:0.25rem; align-items:center;">
+                                <button class="edit-person-btn" onclick="toggleEditPerson(${person.id})" title="Edit">✏️</button>
+                                <button class="remove-btn" onclick="removePerson(${person.id})">×</button>
+                            </div>
                         </div>
-                        <button class="remove-btn" onclick="removePerson(${person.id})">×</button>
+                        <div class="edit-person-form" id="editForm_${person.id}" style="display:none;">
+                            <div class="form-group" style="margin-bottom:0.5rem; margin-top:0.75rem;">
+                                <label style="font-size:0.8rem;">Name</label>
+                                <input type="text" id="editName_${person.id}" value="${person.name}" autocomplete="off">
+                            </div>
+                            <div class="form-group" style="margin-bottom:0.5rem;">
+                                <label style="font-size:0.8rem;">Phone</label>
+                                <input type="tel" id="editPhone_${person.id}" value="${displayPhone(person.phone)}" autocomplete="off" oninput="formatPhoneInput(this)">
+                            </div>
+                            <div style="display:flex; gap:0.5rem;">
+                                <button class="inline-add-confirm" style="flex:1;" onclick="saveEditPerson(${person.id})">Save</button>
+                                <button class="inline-add-cancel" onclick="toggleEditPerson(${person.id})">Cancel</button>
+                            </div>
+                        </div>
                     </div>
                 `).join('');
 
