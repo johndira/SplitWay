@@ -351,6 +351,19 @@
             font-weight: 700;
             line-height: 1;
         }
+        .contact-chip .chip-remove {
+            font-size: 1rem;
+            font-weight: 700;
+            line-height: 1;
+            margin-left: 0.15rem;
+            color: var(--primary);
+            opacity: 0.5;
+            transition: opacity 0.15s;
+        }
+        .contact-chip .chip-remove:hover {
+            opacity: 1;
+            color: var(--danger);
+        }
 
         /* API Key Setup Screen */
         .setup-screen {
@@ -1773,8 +1786,15 @@
                 <div class="contact-chip" onclick="addContactFromChip('${c.name.replace(/'/g, "\\'")}', '${c.phone}')">
                     <span class="chip-plus">+</span>
                     ${c.name}
+                    <span class="chip-remove" onclick="event.stopPropagation(); deleteContact('${c.phone}')" title="Remove contact">×</span>
                 </div>
             `).join('');
+        }
+
+        function deleteContact(phone) {
+            const contacts = getSavedContacts().filter(c => c.phone !== phone);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(contacts));
+            renderSavedContacts();
         }
 
         function addContactFromChip(name, phone) {
