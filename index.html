@@ -1542,11 +1542,14 @@
                         </div>
                     </div>
 
-                    <!-- Tax/Fees saved cards (appear after Update) -->
+                    <!-- Tax/Fees committed card (appears after Save) -->
                     <div id="step3TaxCard" style="display:none;"></div>
 
-                    <!-- Tax/Fees input form -->
-                    <div id="step3TaxForm" style="background: var(--background); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem;">
+                    <!-- Tax/Fees collapsed trigger (default state) -->
+                    <button id="step3TaxTrigger" onclick="toggleStep3TaxForm()" style="width:100%; padding:0.75rem 1rem; background:transparent; border:2px dashed var(--border); border-radius:12px; color:var(--primary); font-weight:600; font-size:0.9rem; cursor:pointer; margin-bottom:0.75rem; transition:all 0.2s;">+ Add Tax &amp; Fees</button>
+
+                    <!-- Tax/Fees input form (hidden by default) -->
+                    <div id="step3TaxForm" style="display:none; background: var(--background); border:2px dashed var(--primary); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem;">
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
                             <div class="form-group" style="margin-bottom: 0;">
                                 <label>Tax ($)</label>
@@ -1557,7 +1560,10 @@
                                 <input type="number" id="step3Fees" placeholder="0.00" min="0" step="0.01">
                             </div>
                         </div>
-                        <button class="btn-primary" onclick="commitStep3TaxFees()" style="margin-top: 0.75rem;">Update</button>
+                        <div style="display:flex; gap:0.5rem; margin-top:0.75rem;">
+                            <button class="btn-primary" onclick="commitStep3TaxFees()" style="margin-top:0; flex:1;">Save</button>
+                            <button onclick="toggleStep3TaxForm()" style="padding:0.75rem 1rem; background:transparent; color:var(--text-secondary); border:1.5px solid var(--border); border-radius:12px; font-weight:600; font-size:0.95rem; cursor:pointer;">Cancel</button>
+                        </div>
                     </div>
 
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: rgba(10,132,255,0.07); border-radius: 12px; margin-bottom: 1rem;">
@@ -2275,12 +2281,18 @@ Important:
                                   onblur="saveStep3Price(this,${i})"
                                   onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
                             >$${item.price.toFixed(2)}</span>
+                            <button onclick="editStep3Item(${i})" style="background:none;border:none;font-size:0.95rem;cursor:pointer;padding:0 0.15rem;flex-shrink:0;opacity:0.55;" title="Edit">✏️</button>
                             <button onclick="removeStep3Item(${i})" style="background:none;border:none;color:var(--danger);font-size:1.2rem;cursor:pointer;padding:0 0.25rem;flex-shrink:0;">×</button>
                         </div>
                     </div>
                 `).join('');
             }
             updateStep3Total();
+        }
+
+        function editStep3Item(i) {
+            const spans = document.querySelectorAll('#step3ItemsList [contenteditable]');
+            if (spans[i * 2]) { spans[i * 2].focus(); }
         }
 
         function escHtml(str) {
@@ -2333,47 +2345,62 @@ Important:
             renderStep3Items();
         }
 
-        // Commit tax/fees → collapse form, show summary card
+        function toggleStep3TaxForm() {
+            const form    = document.getElementById('step3TaxForm');
+            const trigger = document.getElementById('step3TaxTrigger');
+            const visible = form.style.display !== 'none';
+            form.style.display    = visible ? 'none' : 'block';
+            trigger.style.display = visible ? 'block' : 'none';
+            if (!visible) document.getElementById('step3Tax').focus();
+        }
+
+        // Commit tax/fees → collapse form, show single combined card
         function commitStep3TaxFees() {
             const tax  = parseFloat(document.getElementById('step3Tax').value)  || 0;
             const fees = parseFloat(document.getElementById('step3Fees').value) || 0;
             const card = document.getElementById('step3TaxCard');
             const form = document.getElementById('step3TaxForm');
+            const trigger = document.getElementById('step3TaxTrigger');
 
-            let rows = '';
-            if (tax > 0) {
-                rows += `<div style="${S3_ITEM_STYLE}">
-                    <span style="font-weight:600;">Tax</span>
-                    <div style="display:flex;align-items:center;gap:0.5rem;">
-                        <span style="font-weight:600;color:var(--success);">$${tax.toFixed(2)}</span>
-                        <button onclick="editStep3TaxFees()" style="background:none;border:none;color:var(--primary);font-size:0.85rem;font-weight:600;cursor:pointer;padding:0 0.25rem;">✏️</button>
-                    </div>
-                </div>`;
-            }
-            if (fees > 0) {
-                rows += `<div style="${S3_ITEM_STYLE}">
-                    <span style="font-weight:600;">Other Fees</span>
-                    <div style="display:flex;align-items:center;gap:0.5rem;">
-                        <span style="font-weight:600;color:var(--success);">$${fees.toFixed(2)}</span>
-                        <button onclick="editStep3TaxFees()" style="background:none;border:none;color:var(--primary);font-size:0.85rem;font-weight:600;cursor:pointer;padding:0 0.25rem;">✏️</button>
-                    </div>
-                </div>`;
+            if (tax <= 0 && fees <= 0) {
+                // Nothing entered — just collapse back to trigger
+                form.style.display    = 'none';
+                trigger.style.display = 'block';
+                card.style.display    = 'none';
+                return;
             }
 
-            if (rows) {
-                card.innerHTML  = rows;
-                card.style.display = 'block';
-                form.style.display = 'none';
-            } else {
-                card.style.display = 'none';
-            }
+            const total = tax + fees;
+            let label = (tax > 0 && fees > 0) ? 'Tax &amp; Fees' : (tax > 0 ? 'Tax' : 'Other Fees');
+
+            card.innerHTML = `<div style="${S3_ITEM_STYLE}">
+                <span style="font-weight:600;">${label}</span>
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <span style="font-weight:600;color:var(--success);">$${total.toFixed(2)}</span>
+                    <button onclick="editStep3TaxFees()" style="background:none;border:none;font-size:0.95rem;cursor:pointer;padding:0 0.15rem;flex-shrink:0;opacity:0.55;" title="Edit">✏️</button>
+                    <button onclick="clearStep3TaxFees()" style="background:none;border:none;color:var(--danger);font-size:1.2rem;cursor:pointer;padding:0 0.25rem;flex-shrink:0;">×</button>
+                </div>
+            </div>`;
+            card.style.display    = 'block';
+            form.style.display    = 'none';
+            trigger.style.display = 'none';
             updateStep3Total();
         }
 
         function editStep3TaxFees() {
-            document.getElementById('step3TaxCard').style.display = 'none';
-            document.getElementById('step3TaxForm').style.display = 'block';
+            document.getElementById('step3TaxCard').style.display    = 'none';
+            document.getElementById('step3TaxTrigger').style.display = 'none';
+            document.getElementById('step3TaxForm').style.display    = 'block';
             document.getElementById('step3Tax').focus();
+        }
+
+        function clearStep3TaxFees() {
+            document.getElementById('step3Tax').value  = '';
+            document.getElementById('step3Fees').value = '';
+            document.getElementById('step3TaxCard').style.display    = 'none';
+            document.getElementById('step3TaxTrigger').style.display = 'block';
+            document.getElementById('step3TaxForm').style.display    = 'none';
+            updateStep3Total();
         }
 
         function updateStep3Total() {
