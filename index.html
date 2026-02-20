@@ -1508,7 +1508,11 @@
                 <div id="manualMode" style="display:none;">
                     <div id="step3ItemsList"></div>
 
-                    <div id="step3AddForm" style="background: var(--background); border-radius: 12px; padding: 1.25rem; margin-bottom: 0.75rem;">
+                    <!-- Collapsed trigger -->
+                    <button id="step3AddTrigger" onclick="toggleStep3AddForm()" style="width:100%; padding:0.75rem 1rem; background:transparent; border:2px dashed var(--border); border-radius:12px; color:var(--primary); font-weight:600; font-size:0.9rem; cursor:pointer; margin-bottom:0.75rem; transition:all 0.2s;">+ Add Item</button>
+
+                    <!-- Expandable form (hidden by default) -->
+                    <div id="step3AddForm" style="display:none; background: var(--background); border:2px dashed var(--primary); border-radius: 12px; padding: 1.25rem; margin-bottom: 0.75rem;">
                         <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.75rem; align-items: end;">
                             <div class="form-group" style="margin-bottom: 0;">
                                 <label>Item name</label>
@@ -1519,7 +1523,10 @@
                                 <input type="number" id="step3ItemPrice" placeholder="0.00" min="0" step="0.01" style="width: 110px;" onkeydown="if(event.key==='Enter') addStep3Item()">
                             </div>
                         </div>
-                        <button class="btn-primary" onclick="addStep3Item()" style="margin-top: 0.75rem;">+ Add Item</button>
+                        <div style="display:flex; gap:0.5rem; margin-top:0.75rem;">
+                            <button class="btn-primary" onclick="addStep3Item()" style="margin-top:0; flex:1;">Add</button>
+                            <button onclick="toggleStep3AddForm()" style="padding:0.75rem 1rem; background:transparent; color:var(--text-secondary); border:1.5px solid var(--border); border-radius:12px; font-weight:600; font-size:0.95rem; cursor:pointer;">Cancel</button>
+                        </div>
                     </div>
 
                     <div style="background: var(--background); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem;">
@@ -2242,6 +2249,15 @@ Important:
             updateStep3Total();
         }
 
+        function toggleStep3AddForm() {
+            const form    = document.getElementById('step3AddForm');
+            const trigger = document.getElementById('step3AddTrigger');
+            const visible = form.style.display !== 'none';
+            form.style.display    = visible ? 'none' : 'block';
+            trigger.style.display = visible ? 'block' : 'none';
+            if (!visible) document.getElementById('step3ItemName').focus();
+        }
+
         function addStep3Item() {
             const nameEl  = document.getElementById('step3ItemName');
             const priceEl = document.getElementById('step3ItemPrice');
@@ -2254,7 +2270,9 @@ Important:
             step3Items.push({ name, price: parseFloat(price.toFixed(2)) });
             nameEl.value  = '';
             priceEl.value = '';
-            nameEl.focus();
+            // Collapse form and show trigger again
+            document.getElementById('step3AddForm').style.display    = 'none';
+            document.getElementById('step3AddTrigger').style.display = 'block';
             renderStep3Items();
         }
 
