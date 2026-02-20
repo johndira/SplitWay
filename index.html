@@ -1566,8 +1566,38 @@
                         </div>
                     </div>
 
+                    <!-- Step 3 Tip adjuster (shown once at least 1 item added) -->
+                    <div class="tip-adjuster-compact" id="s3TipAdjuster" style="display:none;">
+                        <div class="tip-main-row" onclick="s3ToggleTipExpanded()">
+                            <div class="tip-main-left">
+                                <span class="tip-label">💰 Tip</span>
+                                <span class="tip-pct-badge" id="s3TipPctBadge">18%</span>
+                            </div>
+                            <div class="tip-main-right">
+                                <span class="tip-amount-display" id="s3TipAmountDisplay">$0.00</span>
+                                <span class="tip-expand-icon" id="s3TipExpandIcon">▼</span>
+                            </div>
+                        </div>
+                        <div class="tip-expanded-content" id="s3TipExpandedContent" style="display:none;">
+                            <div class="tip-pct-row">
+                                <input type="number" class="tip-pct-input" id="s3TipPctInput"
+                                       min="0" max="100" step="1" value="18"
+                                       oninput="s3OnTipPctChange(this.value)">
+                                <span class="tip-pct-unit">%</span>
+                            </div>
+                            <input type="range" class="tip-slider" id="s3TipSlider"
+                                   min="0" max="40" step="0.5" value="18"
+                                   oninput="s3OnTipSliderChange(this.value)">
+                            <div class="tip-manual-row">
+                                <input type="number" class="tip-manual-input" id="s3TipManualInput"
+                                       min="0" step="0.01" placeholder="Custom amount ($)"
+                                       oninput="s3OnTipManualChange(this.value)">
+                            </div>
+                        </div>
+                    </div>
+
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: rgba(10,132,255,0.07); border-radius: 12px; margin-bottom: 1rem;">
-                        <span style="font-weight: 600; color: var(--text-primary);">Subtotal</span>
+                        <span style="font-weight: 600; color: var(--text-primary);">Total</span>
                         <span style="font-weight: 700; font-size: 1.2rem; font-family: 'Epilogue', sans-serif; color: var(--primary);" id="step3Subtotal">$0.00</span>
                     </div>
 
@@ -2403,15 +2433,90 @@ Important:
             updateStep3Total();
         }
 
+        // ── Step 3 tip state (separate from Step 4 tip state) ─────────────────
+        let s3TipPercent = 18;
+        let s3TipManual  = null;
+        let s3TipExpanded = false;
+
+        function s3GetTipAmount() {
+            const base = step3Items.reduce((s, i) => s + i.price, 0);
+            if (s3TipManual !== null) return s3TipManual;
+            return parseFloat((base * s3TipPercent / 100).toFixed(2));
+        }
+
+        function s3RefreshTipDisplay() {
+            const base   = step3Items.reduce((s, i) => s + i.price, 0);
+            const tipAmt = s3GetTipAmount();
+            const displayPct = base > 0
+                ? parseFloat((tipAmt / base * 100).toFixed(1))
+                : s3TipPercent;
+
+            const badge = document.getElementById('s3TipPctBadge');
+            const amtEl = document.getElementById('s3TipAmountDisplay');
+            const pctEl = document.getElementById('s3TipPctInput');
+            const slider = document.getElementById('s3TipSlider');
+            if (badge)  badge.textContent  = displayPct.toFixed(displayPct % 1 === 0 ? 0 : 1) + '%';
+            if (amtEl)  amtEl.textContent  = '$' + tipAmt.toFixed(2);
+            if (pctEl)  pctEl.value        = displayPct;
+            if (slider) slider.value       = Math.min(40, displayPct);
+        }
+
+        function s3ToggleTipExpanded() {
+            s3TipExpanded = !s3TipExpanded;
+            const content = document.getElementById('s3TipExpandedContent');
+            const icon    = document.getElementById('s3TipExpandIcon');
+            if (content) content.style.display = s3TipExpanded ? 'block' : 'none';
+            if (icon)    icon.classList.toggle('expanded', s3TipExpanded);
+        }
+
+        function s3OnTipPctChange(val) {
+            const num = parseFloat(val);
+            if (isNaN(num) || num < 0) return;
+            s3TipPercent = num;
+            s3TipManual  = null;
+            const mi = document.getElementById('s3TipManualInput');
+            if (mi) mi.value = '';
+            s3RefreshTipDisplay();
+            updateStep3Total();
+        }
+
+        function s3OnTipSliderChange(val) {
+            s3TipPercent = parseFloat(val);
+            s3TipManual  = null;
+            const mi = document.getElementById('s3TipManualInput');
+            if (mi) mi.value = '';
+            s3RefreshTipDisplay();
+            updateStep3Total();
+        }
+
+        function s3OnTipManualChange(val) {
+            const num = parseFloat(val);
+            const base = step3Items.reduce((s, i) => s + i.price, 0);
+            if (isNaN(num) || num < 0) {
+                s3TipManual = null;
+            } else {
+                s3TipManual = num;
+                if (base > 0) s3TipPercent = parseFloat((num / base * 100).toFixed(1));
+            }
+            s3RefreshTipDisplay();
+            updateStep3Total();
+        }
+
         function updateStep3Total() {
             const itemsTotal = step3Items.reduce((s, i) => s + i.price, 0);
             const tax  = parseFloat(document.getElementById('step3Tax').value)  || 0;
             const fees = parseFloat(document.getElementById('step3Fees').value) || 0;
-            const subtotal = itemsTotal + tax + fees;
+            const tip  = s3GetTipAmount();
+            const total = itemsTotal + tax + fees + tip;
 
-            document.getElementById('step3Subtotal').textContent = '$' + subtotal.toFixed(2);
+            document.getElementById('step3Subtotal').textContent = '$' + total.toFixed(2);
             document.getElementById('continueStep3').style.display =
                 step3Items.length > 0 ? 'block' : 'none';
+
+            // Show/hide tip widget based on whether items exist
+            const adj = document.getElementById('s3TipAdjuster');
+            if (adj) adj.style.display = step3Items.length > 0 ? 'block' : 'none';
+            s3RefreshTipDisplay();
         }
 
         function confirmStep3() {
@@ -2423,16 +2528,17 @@ Important:
 
             subtotalBase = receiptItems.reduce((s, i) => s + i.price, 0);
 
-            if (tax > 0)  receiptItems.push({ name: 'Tax',       price: parseFloat(tax.toFixed(2)),  assignedTo: [], isFee: true });
+            if (tax > 0)  receiptItems.push({ name: 'Tax',        price: parseFloat(tax.toFixed(2)),  assignedTo: [], isFee: true });
             if (fees > 0) receiptItems.push({ name: 'Other Fees', price: parseFloat(fees.toFixed(2)), assignedTo: [], isFee: true });
 
-            tipPercent = 18;
-            tipManual  = null;
-            const initialTip = parseFloat((subtotalBase * 0.18).toFixed(2));
-            receiptItems.push({ name: 'Tip', price: initialTip, assignedTo: [], isFee: true, isTip: true });
+            // Carry S3 tip state forward into Step 4
+            tipPercent = s3TipPercent;
+            tipManual  = s3TipManual;
+            const tipAmt = parseFloat(s3GetTipAmount().toFixed(2));
+            receiptItems.push({ name: 'Tip', price: tipAmt, assignedTo: [], isFee: true, isTip: true });
 
             document.getElementById('tipAdjuster').style.display = 'block';
-            document.getElementById('tipSlider').value = tipPercent;
+            document.getElementById('tipSlider').value = Math.min(40, tipPercent);
             refreshTipDisplay();
             renderItems();
             goToStep(4);
