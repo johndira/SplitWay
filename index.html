@@ -1529,7 +1529,11 @@
                         </div>
                     </div>
 
-                    <div style="background: var(--background); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem;">
+                    <!-- Tax/Fees saved cards (appear after Update) -->
+                    <div id="step3TaxCard" style="display:none;"></div>
+
+                    <!-- Tax/Fees input form -->
+                    <div id="step3TaxForm" style="background: var(--background); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem;">
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
                             <div class="form-group" style="margin-bottom: 0;">
                                 <label>Tax ($)</label>
@@ -1540,7 +1544,7 @@
                                 <input type="number" id="step3Fees" placeholder="0.00" min="0" step="0.01">
                             </div>
                         </div>
-                        <button class="btn-primary" onclick="updateStep3Total()" style="margin-top: 0.75rem;">Update</button>
+                        <button class="btn-primary" onclick="commitStep3TaxFees()" style="margin-top: 0.75rem;">Update</button>
                     </div>
 
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: rgba(10,132,255,0.07); border-radius: 12px; margin-bottom: 1rem;">
@@ -2228,6 +2232,10 @@ Important:
 
         // ── Step 3: manual item entry ──────────────────────────────────────────
         let step3Items = []; // [{name, price}]
+        const S3_ITEM_STYLE = `display:flex;justify-content:space-between;align-items:center;
+            padding:0.85rem 1rem;background:var(--background);border-radius:10px;
+            margin-bottom:0.5rem;border:2px solid var(--border);
+            animation:fadeInUp 0.25s ease both;`;
 
         function renderStep3Items() {
             const list = document.getElementById('step3ItemsList');
@@ -2235,17 +2243,42 @@ Important:
                 list.innerHTML = '';
             } else {
                 list.innerHTML = step3Items.map((item, i) => `
-                    <div style="display:flex; justify-content:space-between; align-items:center;
-                                padding:0.85rem 1rem; background:var(--background);
-                                border-radius:10px; margin-bottom:0.5rem; border:2px solid transparent;">
-                        <span style="font-weight:600;">${item.name}</span>
-                        <div style="display:flex; align-items:center; gap:0.75rem;">
-                            <span style="font-weight:600; color:var(--success);">$${item.price.toFixed(2)}</span>
-                            <button onclick="removeStep3Item(${i})" style="background:none;border:none;color:var(--danger);font-size:1.2rem;cursor:pointer;padding:0 0.25rem;">×</button>
+                    <div style="${S3_ITEM_STYLE}">
+                        <span contenteditable="true"
+                              style="font-weight:600;outline:none;flex:1;cursor:text;"
+                              onblur="saveStep3Name(this,${i})"
+                              onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+                        >${escHtml(item.name)}</span>
+                        <div style="display:flex;align-items:center;gap:0.5rem;margin-left:0.75rem;">
+                            <span contenteditable="true"
+                                  style="font-weight:600;color:var(--success);outline:none;cursor:text;min-width:2.5rem;text-align:right;"
+                                  onblur="saveStep3Price(this,${i})"
+                                  onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+                            >$${item.price.toFixed(2)}</span>
+                            <button onclick="removeStep3Item(${i})" style="background:none;border:none;color:var(--danger);font-size:1.2rem;cursor:pointer;padding:0 0.25rem;flex-shrink:0;">×</button>
                         </div>
                     </div>
                 `).join('');
             }
+            updateStep3Total();
+        }
+
+        function escHtml(str) {
+            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function saveStep3Name(el, i) {
+            const v = el.textContent.trim();
+            if (!v) { el.textContent = step3Items[i].name; return; }
+            step3Items[i].name = v;
+        }
+
+        function saveStep3Price(el, i) {
+            const raw = el.textContent.replace(/[^0-9.]/g,'');
+            const p   = parseFloat(raw);
+            if (isNaN(p) || p < 0) { el.textContent = '$' + step3Items[i].price.toFixed(2); return; }
+            step3Items[i].price = parseFloat(p.toFixed(2));
+            el.textContent = '$' + step3Items[i].price.toFixed(2);
             updateStep3Total();
         }
 
@@ -2270,7 +2303,6 @@ Important:
             step3Items.push({ name, price: parseFloat(price.toFixed(2)) });
             nameEl.value  = '';
             priceEl.value = '';
-            // Collapse form and show trigger again
             document.getElementById('step3AddForm').style.display    = 'none';
             document.getElementById('step3AddTrigger').style.display = 'block';
             renderStep3Items();
@@ -2279,6 +2311,49 @@ Important:
         function removeStep3Item(index) {
             step3Items.splice(index, 1);
             renderStep3Items();
+        }
+
+        // Commit tax/fees → collapse form, show summary card
+        function commitStep3TaxFees() {
+            const tax  = parseFloat(document.getElementById('step3Tax').value)  || 0;
+            const fees = parseFloat(document.getElementById('step3Fees').value) || 0;
+            const card = document.getElementById('step3TaxCard');
+            const form = document.getElementById('step3TaxForm');
+
+            let rows = '';
+            if (tax > 0) {
+                rows += `<div style="${S3_ITEM_STYLE}">
+                    <span style="font-weight:600;">Tax</span>
+                    <div style="display:flex;align-items:center;gap:0.5rem;">
+                        <span style="font-weight:600;color:var(--success);">$${tax.toFixed(2)}</span>
+                        <button onclick="editStep3TaxFees()" style="background:none;border:none;color:var(--primary);font-size:0.85rem;font-weight:600;cursor:pointer;padding:0 0.25rem;">✏️</button>
+                    </div>
+                </div>`;
+            }
+            if (fees > 0) {
+                rows += `<div style="${S3_ITEM_STYLE}">
+                    <span style="font-weight:600;">Other Fees</span>
+                    <div style="display:flex;align-items:center;gap:0.5rem;">
+                        <span style="font-weight:600;color:var(--success);">$${fees.toFixed(2)}</span>
+                        <button onclick="editStep3TaxFees()" style="background:none;border:none;color:var(--primary);font-size:0.85rem;font-weight:600;cursor:pointer;padding:0 0.25rem;">✏️</button>
+                    </div>
+                </div>`;
+            }
+
+            if (rows) {
+                card.innerHTML  = rows;
+                card.style.display = 'block';
+                form.style.display = 'none';
+            } else {
+                card.style.display = 'none';
+            }
+            updateStep3Total();
+        }
+
+        function editStep3TaxFees() {
+            document.getElementById('step3TaxCard').style.display = 'none';
+            document.getElementById('step3TaxForm').style.display = 'block';
+            document.getElementById('step3Tax').focus();
         }
 
         function updateStep3Total() {
